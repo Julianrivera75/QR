@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificación de Credenciales - Alcaldía Local de Santa Fe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="public-body">
+  
+  <div class="mesh-bg"></div>
+
+  <main class="public-container">
+    <!-- Brand / Logo Area -->
+    <header class="public-header">
+      <div class="logo-box">
+        <span class="logo-accent">Alcaldía Local de Santa Fe</span>
+        <span class="logo-divider"></span>
+        <span class="logo-title">San Victorino</span>
+      </div>
+      <p class="login-subtitle text-center" style="margin-top: 8px; font-size: 0.8rem; color: var(--color-text-muted);">Fallo de recuperación de espacio público de San Victorino</p>
+    </header>
+
+    <!-- Glassmorphic Card Container -->
+    <section class="card-glass" id="validation-card">
+      
+      <!-- Loading State -->
+      <div id="state-loading" class="state-container">
+        <div class="spinner"></div>
+        <p class="loading-text">Validando código de seguridad...</p>
+      </div>
+
+      <!-- Error / Not Found State -->
+      <div id="state-error" class="state-container hidden">
+        <div class="status-icon icon-error">
+          <svg viewBox="0 0 24 24" width="64" height="64" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <h1 class="status-title text-red">Carné No Válido</h1>
+        <p class="status-desc" id="error-message">El código QR escaneado no es válido o ha sido revocado del sistema oficial.</p>
+        <span class="status-badge badge-danger">Inválido</span>
+      </div>
+
+      <!-- Success / Active State -->
+      <div id="state-success" class="state-container hidden">
+        <!-- Status Header Badge -->
+        <div class="validation-status-banner" id="status-banner">
+          <div class="status-icon-small" id="status-icon-holder">
+            <!-- Icon will be inserted dynamically -->
+          </div>
+          <span class="banner-title" id="banner-text">CARNÉ VERIFICADO</span>
+        </div>
+
+        <!-- Beneficiary Data Grid -->
+        <div class="badge-profile-layout">
+          <!-- Left side: Photo -->
+          <div class="badge-photo-wrapper">
+            <img src="" alt="Fotografía del Vendedor" id="beneficiary-photo" class="badge-photo">
+            <div id="photo-placeholder" class="badge-photo-placeholder hidden">
+              <!-- Silhouette Vector -->
+              <svg viewBox="0 0 24 24" width="48" height="48" fill="rgba(255,255,255,0.4)">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Right side: Key Info -->
+          <div class="badge-info-wrapper">
+            <h2 class="beneficiary-name" id="beneficiary-name">MARIA CONSTANDA RODRIGUEZ</h2>
+            <div class="info-field">
+              <span class="info-label">Identificación</span>
+              <span class="info-value" id="beneficiary-doc">CC *******932</span>
+            </div>
+            <div class="info-field" id="rivi-field">
+              <span class="info-label">Código RIVI</span>
+              <span class="info-value text-glow" id="beneficiary-rivi">RIVI-98745</span>
+            </div>
+          </div>
+        </div>
+
+        <hr class="card-divider">
+
+        <div class="badge-details-grid">
+          <div class="detail-item">
+            <span class="detail-label">Actividad Comercial</span>
+            <span class="detail-value" id="beneficiary-activity">Venta de Alimentos</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Entidad Emisora</span>
+            <span class="detail-value">Alcaldía Local de Santa Fe</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Estado de Vigencia</span>
+            <span class="status-badge" id="beneficiary-status-badge">Activo</span>
+          </div>
+        </div>
+
+        <!-- Security Stamp Footer -->
+        <footer class="badge-security-footer">
+          <div class="security-seal">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>Verificación Oficial Segura (TLS/Cifrado)</span>
+          </div>
+          <p class="seal-timestamp" id="scan-time">Fecha de consulta: --/--/---- --:--</p>
+        </footer>
+
+      </div>
+
+    </section>
+
+    <footer class="public-footer">
+      <p>© 2026 Alcaldía Local de Santa Fe - San Victorino</p>
+      <p>Bogotá, Colombia</p>
+    </footer>
+  </main>
+
+  <script src="/js/validate.js"></script>
+</body>
+</html>

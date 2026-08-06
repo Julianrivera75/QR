@@ -1,0 +1,34 @@
+# Dependencias de Node.js
+node_modules/
+
+# Base de datos SQLite (datos sensibles - NO subir)
+database/*.db
+database/*.db-shm
+database/*.db-wal
+
+# Archivos de prueba y scripts temporales
+test_photo_url.js
+check_photo.js
+check_img_dims.js
+import_5_test.js
+
+# Fotos descargadas de beneficiarios (datos personales)
+server/uploads/photos/
+
+# Variables de entorno
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+logs/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
