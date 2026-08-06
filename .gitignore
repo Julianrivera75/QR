@@ -32,3 +32,5 @@ desktop.ini
 # Editor
 .vscode/
 .idea/
+
+*.xlsx
