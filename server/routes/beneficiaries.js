@@ -247,7 +247,7 @@ router.post('/', authenticateToken, uploadPhoto.single('photo'), async (req, res
     const uuid = crypto.randomUUID();
     const photoPath = req.file ? `/uploads/photos/${req.file.filename}` : '';
 
-    const result = await dbRun(`
+    await dbRun(`
       INSERT INTO beneficiaries (
         uuid, full_name, document_type, document_number, registered_hemi, rivi, status,
         age, gender, population_group, disability, phone, latitude, longitude,
@@ -260,7 +260,8 @@ router.post('/', authenticateToken, uploadPhoto.single('photo'), async (req, res
       economic_activity, ipes_beneficiary, offer_type || '', parseInt(days_per_week), permanence_time, photoPath
     ]);
 
-    const newId = result.lastID;
+    const inserted = await dbGet('SELECT id FROM beneficiaries WHERE uuid = ?', [uuid]);
+    const newId = inserted ? inserted.id : null;
 
     // Log audit
     await logAuditEvent(req.user.id, newId, 'CREATE', null);
@@ -700,6 +701,14 @@ router.post('/import', authenticateToken, uploadImportFile.single('file'), async
         daysVal = 5; // sensible default instead of failing
       }
 
+      // Normalize document_number: Excel may convert large numbers to scientific notation
+      let docNumber = String(data.document_number || '').trim();
+      // Convert scientific notation (e.g. 1.03E+10) to integer string
+      if (/e\+/i.test(docNumber)) {
+        const parsed = parseFloat(docNumber);
+        if (!isNaN(parsed)) docNumber = Math.round(parsed).toString();
+      }
+
       // Check duplicate document number in DB
       const existingDoc = await dbGet('SELECT id, photo_path FROM beneficiaries WHERE document_number = ?', [docNumber]);
       if (existingDoc) {
@@ -744,19 +753,11 @@ router.post('/import', authenticateToken, uploadImportFile.single('file'), async
       };
       const status = normalizeStatus(data.status);
 
-      // Normalize document_number: Excel may convert large numbers to scientific notation
-      let docNumber = String(data.document_number || '').trim();
-      // Convert scientific notation (e.g. 1.03E+10) to integer string
-      if (/e\+/i.test(docNumber)) {
-        const parsed = parseFloat(docNumber);
-        if (!isNaN(parsed)) docNumber = Math.round(parsed).toString();
-      }
-
       // Insert record
       const uuid = crypto.randomUUID();
 
       try {
-        const result = await dbRun(`
+        await dbRun(`
           INSERT INTO beneficiaries (
             uuid, full_name, document_type, document_number, registered_hemi, rivi, status,
             age, gender, population_group, disability, phone, latitude, longitude,
@@ -771,7 +772,9 @@ router.post('/import', authenticateToken, uploadImportFile.single('file'), async
         importedCount++;
         
         // Log individual audit
-        await logAuditEvent(req.user.id, result.lastID, 'CREATE', { imported_via: 'BULK_IMPORT' });
+        const inserted = await dbGet('SELECT id FROM beneficiaries WHERE uuid = ?', [uuid]);
+        const insertedId = inserted ? inserted.id : null;
+        await logAuditEvent(req.user.id, insertedId, 'CREATE', { imported_via: 'BULK_IMPORT' });
 
       } catch (insertError) {
         console.error('Insert error during import row:', insertError);
