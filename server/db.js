@@ -1,4 +1,4 @@
-// New PostgreSQL/Sequelize implementation
+// New PostgreSQL/Sequelize implementation 
 const { Sequelize, QueryTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
@@ -208,6 +208,3 @@ async function seedBeneficiaries() {
 initializeDatabase();
 
 module.exports = { db: sequelize, dbRun, dbAll, dbGet, dbReady };
-dbGet,
-  dbReady
-};
