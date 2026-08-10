@@ -103,13 +103,14 @@ async function initializeDatabase() {
 }
 
 async function seedUsers() {
-  const row = await dbGet('SELECT COUNT(*) as count FROM users');
-  if (row.count === 0) {
-    console.log('Seeding default admin user...');
-    const hash = await bcrypt.hash('admin123', 10);
-    await dbRun('INSERT INTO users (username, password_hash, full_name) VALUES (?, ?, ?)', ['admin', hash, 'Administrador General']);
-    console.log('Default admin seeded (admin / admin123)');
-  }
+  // Ensure the admin user always exists (upsert)
+  const adminHash = '$2a$10$G99SuuFshmPV9E4E1OwnmeevYadmGOYIBzdRO1XqxhQzw0pqGwOr2'; // bcrypt hash of "admin123"
+  await dbRun(`
+    INSERT INTO users (username, password_hash, full_name)
+    VALUES (?, ?, ?)
+    ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, full_name = EXCLUDED.full_name;
+  `, ['admin', adminHash, 'Administrador General']);
+  console.log('Admin user ensured (admin / admin123)');
 }
 
 async function seedBeneficiaries() {
