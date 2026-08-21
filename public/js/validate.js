@@ -60,9 +60,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Handle photograph rendering
       if (b.photo_path) {
+        photoEl.onload = () => {
+          photoEl.classList.remove('hidden');
+          photoPlaceholder.classList.add('hidden');
+        };
+        photoEl.onerror = () => {
+          photoEl.classList.add('hidden');
+          photoPlaceholder.classList.remove('hidden');
+        };
         photoEl.src = b.photo_path;
-        photoEl.classList.remove('hidden');
-        photoPlaceholder.classList.add('hidden');
       } else {
         photoEl.classList.add('hidden');
         photoPlaceholder.classList.remove('hidden');

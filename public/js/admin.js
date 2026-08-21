@@ -420,7 +420,8 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
       if (b.photo_path) {
-        avatarHtml = `<img src="${b.photo_path}" alt="Foto" class="table-avatar">`;
+        const photoSrc = b.uuid ? `/api/public/photo/${b.uuid}` : b.photo_path;
+        avatarHtml = `<img src="${photoSrc}" alt="Foto" class="table-avatar" onerror="this.style.display='none'">`;
       }
 
       // Status badge styling
