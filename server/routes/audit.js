@@ -52,16 +52,53 @@ router.get('/scans', authenticateToken, async (req, res) => {
       LIMIT 100
     `);
 
-    // Get daily scans count for stats (last 7 days)
-    const chartData = await dbAll(`
-      SELECT 
-        date(scanned_at) as scan_date,
-        COUNT(*) as scan_count
-      FROM scan_logs
-      WHERE scanned_at >= date('now', '-7 days')
-      GROUP BY scan_date
-      ORDER BY scan_date ASC
-    `);
+    // Generate date array for the last 7 days (YYYY-MM-DD)
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      last7Days.push(`${yyyy}-${mm}-${dd}`);
+    }
+
+    const isPostgres = process.env.DATABASE_URL && process.env.DATABASE_URL.includes('postgres');
+    let rawStats = [];
+
+    if (isPostgres) {
+      rawStats = await dbAll(`
+        SELECT 
+          TO_CHAR(scanned_at, 'YYYY-MM-DD') as scan_date,
+          COUNT(*)::int as scan_count
+        FROM scan_logs
+        WHERE scanned_at >= NOW() - INTERVAL '7 days'
+        GROUP BY TO_CHAR(scanned_at, 'YYYY-MM-DD')
+        ORDER BY scan_date ASC
+      `);
+    } else {
+      rawStats = await dbAll(`
+        SELECT 
+          date(scanned_at) as scan_date,
+          COUNT(*) as scan_count
+        FROM scan_logs
+        WHERE scanned_at >= date('now', '-7 days')
+        GROUP BY scan_date
+        ORDER BY scan_date ASC
+      `);
+    }
+
+    // Map counts by date
+    const statsMap = {};
+    rawStats.forEach(row => {
+      statsMap[row.scan_date] = parseInt(row.scan_count, 10) || 0;
+    });
+
+    // Populate all 7 days with counts (defaulting to 0)
+    const chartData = last7Days.map(dateStr => ({
+      scan_date: dateStr,
+      scan_count: statsMap[dateStr] || 0
+    }));
 
     return res.json({
       success: true,

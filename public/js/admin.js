@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const chartContainer = document.getElementById('scan-chart');
     chartContainer.innerHTML = '';
 
-    if (stats.length === 0) {
+    if (!stats || stats.length === 0) {
       chartContainer.innerHTML = '<p class="text-center text-muted py-4">No se registran escaneos en los últimos días</p>';
       return;
     }
@@ -295,21 +295,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const maxVal = Math.max(...stats.map(s => s.scan_count), 1);
 
     stats.forEach(item => {
-      // Date string formatted (MM-DD)
+      // Date string formatted (DD/MM)
       const dateParts = item.scan_date.split('-');
-      const label = dateParts.length === 3 ? `${dateParts[1]}/${dateParts[2]}` : item.scan_date;
-      const heightPercent = Math.max(5, Math.round((item.scan_count / maxVal) * 100));
+      const label = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}` : item.scan_date;
+      const heightPercent = item.scan_count > 0 
+        ? Math.max(12, Math.round((item.scan_count / maxVal) * 100)) 
+        : 5;
 
       const col = document.createElement('div');
       col.className = 'chart-col';
       col.innerHTML = `
-        <div class="chart-col-bar" data-val="${item.scan_count}" style="height: 0%"></div>
+        <div class="chart-col-bar" data-val="${item.scan_count}" title="${item.scan_count} escaneos (${label})" style="height: 0%"></div>
         <span class="chart-col-label">${label}</span>
       `;
       chartContainer.appendChild(col);
 
       setTimeout(() => {
-        col.querySelector('.chart-col-bar').style.height = `${heightPercent}%`;
+        const bar = col.querySelector('.chart-col-bar');
+        if (bar) bar.style.height = `${heightPercent}%`;
       }, 50);
     });
   }
