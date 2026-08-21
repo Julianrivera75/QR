@@ -227,13 +227,63 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-    // Load QR scan metrics
-    fetch('/api/audit/scans')
+    // Load QR scan metrics with active filters
+    loadScanStats();
+  }
+
+  const scanFilterYear = document.getElementById('scan-filter-year');
+  const scanFilterMonth = document.getElementById('scan-filter-month');
+  const scanChartPeriodLabel = document.getElementById('scan-chart-period-label');
+  const scanChartTotal = document.getElementById('scan-chart-total');
+
+  if (scanFilterYear) {
+    scanFilterYear.addEventListener('change', () => loadScanStats());
+  }
+  if (scanFilterMonth) {
+    scanFilterMonth.addEventListener('change', () => loadScanStats());
+  }
+
+  function loadScanStats() {
+    const yr = scanFilterYear ? scanFilterYear.value : '2026';
+    const mo = scanFilterMonth ? scanFilterMonth.value : '8';
+
+    fetch(`/api/audit/scans?year=${encodeURIComponent(yr)}&month=${encodeURIComponent(mo)}`)
       .then(res => res.json())
       .then(data => {
-        if (data.success && data.stats) {
-          renderScanChart(data.stats);
+        if (data.success) {
+          // Update available years dropdown if new years exist
+          if (data.available_years && data.available_years.length > 0 && scanFilterYear) {
+            const currentSelected = scanFilterYear.value;
+            const existingOptions = Array.from(scanFilterYear.options).map(o => o.value);
+            data.available_years.forEach(y => {
+              if (!existingOptions.includes(y)) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                scanFilterYear.insertBefore(opt, scanFilterYear.firstChild);
+              }
+            });
+            scanFilterYear.value = currentSelected;
+          }
+
+          // Update period text
+          let periodText = 'Periodo: ';
+          if (mo === '7days') {
+            periodText += 'Últimos 7 días';
+          } else if (mo === 'all') {
+            periodText += yr === 'all' ? 'Histórico General' : `Año ${yr} (Por Meses)`;
+          } else {
+            const monthNames = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            periodText += `${monthNames[parseInt(mo, 10)] || ''} ${yr === 'all' ? '' : yr}`;
+          }
+          if (scanChartPeriodLabel) scanChartPeriodLabel.textContent = periodText;
+          if (scanChartTotal) scanChartTotal.textContent = (data.total_scans_period || 0).toLocaleString();
+
+          renderScanChart(data.stats || []);
         }
+      })
+      .catch(err => {
+        console.error('Error fetching scan stats:', err);
       });
   }
 
@@ -284,10 +334,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderScanChart(stats) {
     const chartContainer = document.getElementById('scan-chart');
+    if (!chartContainer) return;
     chartContainer.innerHTML = '';
 
     if (!stats || stats.length === 0) {
-      chartContainer.innerHTML = '<p class="text-center text-muted py-4">No se registran escaneos en los últimos días</p>';
+      chartContainer.innerHTML = '<p class="text-center text-muted py-4">No se registran escaneos para el periodo seleccionado</p>';
       return;
     }
 
@@ -295,18 +346,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const maxVal = Math.max(...stats.map(s => s.scan_count), 1);
 
     stats.forEach(item => {
-      // Date string formatted (DD/MM)
-      const dateParts = item.scan_date.split('-');
-      const label = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}` : item.scan_date;
-      const heightPercent = item.scan_count > 0 
-        ? Math.max(12, Math.round((item.scan_count / maxVal) * 100)) 
-        : 5;
+      const label = item.label || item.scan_date;
+      const fullLabel = item.full_label || label;
+      const count = item.scan_count || 0;
+      const heightPercent = count > 0 
+        ? Math.max(14, Math.round((count / maxVal) * 100)) 
+        : 4;
 
       const col = document.createElement('div');
       col.className = 'chart-col';
       col.innerHTML = `
-        <div class="chart-col-bar" data-val="${item.scan_count}" title="${item.scan_count} escaneos (${label})" style="height: 0%"></div>
-        <span class="chart-col-label">${label}</span>
+        <span class="chart-col-val" title="${count} visualizaciones">${count > 0 ? count : ''}</span>
+        <div class="chart-col-bar" data-val="${count}" title="${count} escaneos (${fullLabel})" style="height: 0%"></div>
+        <span class="chart-col-label" title="${fullLabel}">${label}</span>
       `;
       chartContainer.appendChild(col);
 
