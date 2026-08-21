@@ -370,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function loadBeneficiaries() {
-    beneficiariesList.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner spinner-small" style="margin: auto;"></div></td></tr>';
+    beneficiariesList.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="spinner spinner-small" style="margin: auto;"></div></td></tr>';
 
     const searchQuery = searchInput.value;
     const queryParams = new URLSearchParams({
@@ -391,11 +391,11 @@ document.addEventListener('DOMContentLoaded', () => {
           pagination.total = data.total;
           renderBeneficiariesTable();
         } else {
-          beneficiariesList.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-red">${data.message}</td></tr>`;
+          beneficiariesList.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-red">${data.message}</td></tr>`;
         }
       })
       .catch(() => {
-        beneficiariesList.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-red">Error de comunicación con el servidor.</td></tr>';
+        beneficiariesList.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red">Error de comunicación con el servidor.</td></tr>';
       });
   }
 
@@ -403,26 +403,13 @@ document.addEventListener('DOMContentLoaded', () => {
     beneficiariesList.innerHTML = '';
     
     if (beneficiariesData.length === 0) {
-      beneficiariesList.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">No se encontraron beneficiarios registrados.</td></tr>';
+      beneficiariesList.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No se encontraron beneficiarios registrados.</td></tr>';
       updatePaginationControls();
       return;
     }
 
     beneficiariesData.forEach(b => {
       const tr = document.createElement('tr');
-      
-      // Photo avatar element
-      let avatarHtml = `
-        <div class="table-avatar-placeholder">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="rgba(255,255,255,0.2)">
-            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-          </svg>
-        </div>
-      `;
-      if (b.photo_path) {
-        const photoSrc = b.uuid ? `/api/public/photo/${b.uuid}` : b.photo_path;
-        avatarHtml = `<img src="${photoSrc}" alt="Foto" class="table-avatar" onerror="this.style.display='none'">`;
-      }
 
       // Status badge styling
       let badgeClass = 'badge-success';
@@ -433,11 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       tr.innerHTML = `
         <td><input type="checkbox" class="beneficiary-row-checkbox" data-id="${b.id}" ${isChecked}></td>
-        <td>
-          <div class="table-avatar-box">
-            ${avatarHtml}
-          </div>
-        </td>
         <td style="font-weight: 600;">${b.full_name}</td>
         <td>${b.document_type} ${b.document_number}</td>
         <td>${b.registered_hemi}</td>
