@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const docEl = document.getElementById('beneficiary-doc');
   const riviEl = document.getElementById('beneficiary-rivi');
   const activityEl = document.getElementById('beneficiary-activity');
+  const vigenciaEl = document.getElementById('beneficiary-vigencia');
   const photoEl = document.getElementById('beneficiary-photo');
   const photoPlaceholder = document.getElementById('photo-placeholder');
   const statusBadge = document.getElementById('beneficiary-status-badge');
@@ -48,6 +49,15 @@ document.addEventListener('DOMContentLoaded', () => {
       riviEl.textContent = b.rivi || 'No Registra';
       activityEl.textContent = b.economic_activity;
 
+      // Display validity dates
+      if (b.validity_start && b.validity_end) {
+        const startFormatted = formatDate(b.validity_start);
+        const endFormatted = formatDate(b.validity_end);
+        vigenciaEl.textContent = `${startFormatted} - ${endFormatted}`;
+      } else {
+        vigenciaEl.textContent = 'No disponible';
+      }
+
       // Handle photograph rendering
       if (b.photo_path) {
         photoEl.src = b.photo_path;
@@ -75,6 +85,15 @@ document.addEventListener('DOMContentLoaded', () => {
     stateError.classList.remove('hidden');
   }
 
+  // Format ISO date (YYYY-MM-DD) to DD/MM/YYYY
+  function formatDate(isoDate) {
+    const parts = isoDate.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return isoDate;
+  }
+
   function configureStatusUI(status) {
     // Reset banner classes
     statusBanner.className = 'validation-status-banner';
@@ -92,6 +111,19 @@ document.addEventListener('DOMContentLoaded', () => {
       iconSvg = `
         <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      `;
+    } else if (status === 'Vencido') {
+      statusBanner.classList.add('banner-inactive');
+      statusBadge.classList.add('badge-warning');
+      statusBadge.textContent = 'Vencido';
+      bannerText.textContent = 'CARNÉ VENCIDO - FUERA DE VIGENCIA';
+
+      // Clock/expired SVG
+      iconSvg = `
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
         </svg>
       `;
     } else if (status === 'Inactivo') {

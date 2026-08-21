@@ -41,6 +41,18 @@ router.get('/validate/:uuid', async (req, res) => {
       maskedDoc = '***' + docNum.slice(-1);
     }
 
+    // Validity period: 24/08/2026 - 24/08/2028
+    const validityStart = '2026-08-24';
+    const validityEnd = '2028-08-24';
+    const now = new Date();
+    const endDate = new Date(validityEnd + 'T23:59:59');
+
+    // If current date is past validity end, override status to 'Vencido'
+    let effectiveStatus = beneficiary.status;
+    if (now > endDate && beneficiary.status === 'Activo') {
+      effectiveStatus = 'Vencido';
+    }
+
     // Return only public non-sensitive data
     return res.json({
       success: true,
@@ -49,9 +61,11 @@ router.get('/validate/:uuid', async (req, res) => {
         document_type: beneficiary.document_type,
         document_number: maskedDoc,
         rivi: beneficiary.rivi || 'No Registra',
-        status: beneficiary.status,
+        status: effectiveStatus,
         economic_activity: beneficiary.economic_activity,
-        photo_path: beneficiary.photo_path
+        photo_path: beneficiary.photo_path,
+        validity_start: validityStart,
+        validity_end: validityEnd
       }
     });
 

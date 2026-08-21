@@ -49,7 +49,7 @@ async function initializeDatabase() {
         gender VARCHAR(10) CHECK (gender IN ('Masculino', 'Femenino', 'Otro')) NOT NULL,
         population_group VARCHAR(255) NOT NULL,
         disability VARCHAR(3) CHECK (disability IN ('Sí', 'No')) NOT NULL,
-        phone VARCHAR(20),
+        phone VARCHAR(255),
         latitude DOUBLE PRECISION,
         longitude DOUBLE PRECISION,
         economic_activity VARCHAR(255) NOT NULL,
@@ -62,6 +62,17 @@ async function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Alter phone column to VARCHAR(255) if it already exists as VARCHAR(20) in PostgreSQL
+    if (DATABASE_URL.startsWith('postgres')) {
+      try {
+        await dbRun('ALTER TABLE beneficiaries ALTER COLUMN phone TYPE VARCHAR(255);');
+        console.log('beneficiaries.phone column altered to VARCHAR(255) successfully.');
+      } catch (alterErr) {
+        // Safe to ignore if type is already VARCHAR(255) or table hasn't been created
+        console.log('Note: ALTER TABLE phone column failed/skipped:', alterErr.message);
+      }
+    }
 
     // Audit logs table
     await dbRun(`

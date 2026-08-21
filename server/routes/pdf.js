@@ -204,17 +204,7 @@ async function generateCardPdf(beneficiary, host) {
     });
   }
 
-  // Texto: Alcaldía Local de Santa Fe (centrado entre logos)
-  const titleText = 'Alcaldía Local de Santa Fe';
-  const titleSize = 10;
-  const titleWidth = fontHelveticaBold.widthOfTextAtSize(titleText, titleSize);
-  page.drawText(titleText, {
-    x: (width - titleWidth) / 2,
-    y: height - 25,
-    size: titleSize,
-    font: fontHelveticaBold,
-    color: colorGold,
-  });
+
 
   // Dibujar Icono de Trabajador en trazo dorado
   const iconX = width / 2;
@@ -450,6 +440,9 @@ async function generateCardPdf(beneficiary, host) {
 
   // 5.5 Días Ubicación
   drawLabelValueInline('Días ub: ', `${beneficiary.days_per_week} d/sem`, 8.5);
+
+  // 5.6 Vigencia (Fecha de validez: 24/08/2026 - 24/08/2028)
+  drawLabelValueCentered('VIGENCIA', '24/08/2026 - 24/08/2028', 8, 8);
 
   // 6. Bottom Section (Disclaimer Left, QR Right)
   const qrSize = 52;
