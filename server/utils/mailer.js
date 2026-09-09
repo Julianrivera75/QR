@@ -161,7 +161,7 @@ async function sendCarnetEmail(beneficiary, host) {
 
   // 4. Send email
   const transporter = getTransporter();
-  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || "\"Sistema de Carnetización - San Victorino\" <notificaciones@alcaldiabogota.gov.co>";
+  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || '"Sistema de Carnetización - San Victorino" <notificaciones@alcaldiabogota.gov.co>';
   const subject = `Carné Oficial de Identificación - ${beneficiary.full_name} (${beneficiary.document_number})`;
 
   let messageId = `simulated-${Date.now()}-${crypto.randomBytes(4).toString('hex')}@office365.local`;
@@ -184,9 +184,11 @@ async function sendCarnetEmail(beneficiary, host) {
   } else if (process.env.SENDGRID_API_KEY) {
       const sgMail = require('@sendgrid/mail');
       sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      // Use SENDGRID_FROM specifically — must match the verified Single Sender
+      const sgFrom = process.env.SENDGRID_FROM || fromAddress;
       const msg = {
         to: recipientEmail,
-        from: fromAddress,
+        from: sgFrom,
         subject: subject,
         html: htmlContent,
         attachments: [
@@ -198,9 +200,11 @@ async function sendCarnetEmail(beneficiary, host) {
           }
         ]
       };
+      console.log(`📤 Enviando vía SendGrid desde: ${sgFrom} → ${recipientEmail}`);
       const [response] = await sgMail.send(msg);
       messageId = response?.headers?.['x-message-id'] || messageId;
       console.log(`✉️ Correo enviado vía SendGrid a ${recipientEmail}. MessageId: ${messageId}`);
+
 
   } else if (process.env.GRAPH_CLIENT_ID && process.env.GRAPH_CLIENT_SECRET && process.env.GRAPH_TENANT_ID && process.env.GRAPH_USER) {
     // Use Microsoft Graph API
