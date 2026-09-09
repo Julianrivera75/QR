@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSession();
 
   function checkSession() {
-    fetch('/api/auth/me')
+    fetch('/api/auth/me', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success && data.user) {
@@ -132,6 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const password = loginForm.password.value;
 
     fetch('/api/auth/login', {
+      credentials: 'include',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
@@ -153,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnLogout.addEventListener('click', () => {
-    fetch('/api/auth/logout', { method: 'POST' })
+    fetch('/api/auth/logout', { credentials: 'include', method: 'POST' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -209,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ==================== DASHBOARD LOAD & CHARTS ====================
   function loadDashboardStats() {
-    fetch('/api/beneficiaries?limit=1')
+    fetch('/api/beneficiaries?limit=1', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success && data.stats) {
@@ -222,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
     // Load distribution by economic activity
-    fetch('/api/beneficiaries?limit=10000')
+    fetch('/api/beneficiaries?limit=10000', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -250,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const yr = scanFilterYear ? scanFilterYear.value : '2026';
     const mo = scanFilterMonth ? scanFilterMonth.value : '8';
 
-    fetch(`/api/audit/scans?year=${encodeURIComponent(yr)}&month=${encodeURIComponent(mo)}`)
+    fetch(`/api/audit/scans?year=${encodeURIComponent(yr)}&month=${encodeURIComponent(mo)}`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -379,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load unique values to filters select elements
   function loadFilterOptions() {
-    fetch('/api/beneficiaries/unique-values')
+    fetch('/api/beneficiaries/unique-values', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -441,7 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (currentFilters[key]) queryParams.append(key, currentFilters[key]);
     }
 
-    fetch(`/api/beneficiaries?${queryParams.toString()}`)
+    fetch(`/api/beneficiaries?${queryParams.toString()}`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -575,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const conf = confirm(`¿Confirmas el envío formal del carné en PDF al correo "${email}" del vendedor ${name}?`);
     if (!conf) return;
 
-    fetch(`/api/emails/send/${id}`, { method: 'POST' })
+    fetch(`/api/emails/send/${id}`, { credentials: 'include', method: 'POST' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -649,7 +650,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const idsArray = Array.from(selectedBeneficiaryIds);
 
-    fetch('/api/pdf/download-bulk', {
+    fetch('/api/pdf/download-bulk', { credentials: 'include',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: idsArray })
@@ -691,7 +692,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==================== ACTIONS (REGENERATE & DELETE) ====================
   function regenerateQr(id) {
     if (confirm('¿Está seguro de regenerar el código QR? Esta acción invalidará y revocará el carné físico impreso anteriormente.')) {
-      fetch(`/api/beneficiaries/${id}/regenerate-qr`, { method: 'POST' })
+      fetch(`/api/beneficiaries/${id}/regenerate-qr`, { credentials: 'include', method: 'POST' })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -706,7 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function deleteBeneficiary(id) {
     if (confirm('¿Está seguro de eliminar permanentemente a este vendedor? Esta acción borrará el registro, fotos y logs de consulta asociados. No se puede deshacer.')) {
-      fetch(`/api/beneficiaries/${id}`, { method: 'DELETE' })
+      fetch(`/api/beneficiaries/${id}`, { credentials: 'include', method: 'DELETE' })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -743,7 +744,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modalBeneficiaryTitle.textContent = 'Editar Vendedor Informal';
     formAlert.classList.add('hidden');
     
-    fetch(`/api/beneficiaries/${id}`)
+    fetch(`/api/beneficiaries/${id}`, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -834,7 +835,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const url = isEdit ? `/api/beneficiaries/${id}` : '/api/beneficiaries';
     const method = isEdit ? 'PUT' : 'POST';
 
-    fetch(url, {
+    fetch(url, { credentials: 'include',
       method: method,
       body: formData
     })
@@ -915,7 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = new FormData();
     formData.append('file', file);
 
-    fetch('/api/beneficiaries/import', {
+    fetch('/api/beneficiaries/import', { credentials: 'include',
       method: 'POST',
       body: formData
     })
@@ -955,7 +956,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadAuditLogs() {
     auditChangesList.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner spinner-small" style="margin: auto;"></div></td></tr>';
 
-    fetch('/api/audit/logs')
+    fetch('/api/audit/logs', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -1072,7 +1073,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadScanLogs() {
     auditScansList.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner spinner-small" style="margin: auto;"></div></td></tr>';
 
-    fetch('/api/audit/scans')
+    fetch('/api/audit/scans', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -1153,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', () => {
       bulkEmailProgress.classList.remove('hidden');
       bulkEmailResults.classList.add('hidden');
 
-      fetch('/api/emails/send-bulk', {
+      fetch('/api/emails/send-bulk', { credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: Array.from(selectedBeneficiaryIds) })
@@ -1216,7 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!emailsList) return;
     emailsList.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner spinner-small" style="margin: auto;"></div></td></tr>';
 
-    fetch('/api/emails/logs')
+    fetch('/api/emails/logs', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
