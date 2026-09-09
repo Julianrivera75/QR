@@ -2,13 +2,26 @@
 const { Sequelize, QueryTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
 
-// Railway provides DATABASE_URL, otherwise fallback to SQLite file for local dev
-const DATABASE_URL = process.env.DATABASE_URL || `sqlite:${require('path').join(__dirname, '..', 'database', 'platform.db')}`;
+const path = require('path');
+const fs = require('fs');
+const isPostgres = Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres'));
 
-const sequelize = new Sequelize(DATABASE_URL, {
-  logging: false,
-  dialectOptions: DATABASE_URL.startsWith('postgres') ? { ssl: { require: true, rejectUnauthorized: false } } : {}
-});
+let sequelize;
+if (isPostgres) {
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    logging: false,
+    dialectOptions: { ssl: { require: true, rejectUnauthorized: false } }
+  });
+} else {
+  const dbDir = path.join(__dirname, '..', 'database');
+  if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+  const dbPath = path.join(dbDir, 'platform.db');
+  sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: dbPath,
+    logging: false
+  });
+}
 
 // Helper wrappers using Sequelize raw queries
 const dbRun = (sql, params = []) => sequelize.query(sql, { replacements: params, type: QueryTypes.RAW });
@@ -23,10 +36,12 @@ const dbReady = new Promise((resolve) => { dbReadyResolve = resolve; });
 
 async function initializeDatabase() {
   try {
+    const autoId = isPostgres ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
+
     // Users table
     await dbRun(`
       CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
+        id ${autoId},
         username VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         full_name VARCHAR(255) NOT NULL,
@@ -34,10 +49,10 @@ async function initializeDatabase() {
       );
     `);
 
-    // Beneficiaries table (adjusted for PostgreSQL syntax)
+    // Beneficiaries table
     await dbRun(`
       CREATE TABLE IF NOT EXISTS beneficiaries (
-        id SERIAL PRIMARY KEY,
+        id ${autoId},
         uuid UUID UNIQUE NOT NULL,
         full_name VARCHAR(255) NOT NULL,
         document_type VARCHAR(10) CHECK (document_type IN ('CC', 'CE', 'PEP', 'PPT', 'Pasaporte')) NOT NULL,
@@ -58,26 +73,33 @@ async function initializeDatabase() {
         days_per_week INTEGER CHECK (days_per_week BETWEEN 1 AND 7) NOT NULL,
         permanence_time VARCHAR(255) NOT NULL,
         photo_path VARCHAR(255),
+        email VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // Alter phone column to VARCHAR(255) if it already exists as VARCHAR(20) in PostgreSQL
-    if (DATABASE_URL.startsWith('postgres')) {
-      try {
+    // Alter columns if they exist in PostgreSQL or SQLite
+    try {
+      if (isPostgres) {
         await dbRun('ALTER TABLE beneficiaries ALTER COLUMN phone TYPE VARCHAR(255);');
-        console.log('beneficiaries.phone column altered to VARCHAR(255) successfully.');
-      } catch (alterErr) {
-        // Safe to ignore if type is already VARCHAR(255) or table hasn't been created
-        console.log('Note: ALTER TABLE phone column failed/skipped:', alterErr.message);
+        await dbRun('ALTER TABLE beneficiaries ADD COLUMN IF NOT EXISTS email VARCHAR(255);');
+      } else {
+        // SQLite: check if email column exists, if not add it
+        const cols = await dbAll("PRAGMA table_info(beneficiaries);");
+        const hasEmail = cols.some(c => c.name === 'email');
+        if (!hasEmail) {
+          await dbRun('ALTER TABLE beneficiaries ADD COLUMN email VARCHAR(255);');
+        }
       }
+    } catch (alterErr) {
+      console.log('Note: ALTER TABLE email/phone skipped/handled:', alterErr.message);
     }
 
     // Audit logs table
     await dbRun(`
       CREATE TABLE IF NOT EXISTS audit_logs (
-        id SERIAL PRIMARY KEY,
+        id ${autoId},
         user_id INTEGER,
         beneficiary_id INTEGER,
         action VARCHAR(255) NOT NULL,
@@ -91,12 +113,30 @@ async function initializeDatabase() {
     // Scan logs table
     await dbRun(`
       CREATE TABLE IF NOT EXISTS scan_logs (
-        id SERIAL PRIMARY KEY,
+        id ${autoId},
         beneficiary_id INTEGER NOT NULL,
         scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         ip_address VARCHAR(255),
         user_agent TEXT,
         status_at_scan VARCHAR(255) NOT NULL,
+        FOREIGN KEY (beneficiary_id) REFERENCES beneficiaries(id) ON DELETE CASCADE
+      );
+    `);
+
+    // Email logs table (tracks all sent emails and opens)
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS email_logs (
+        id ${autoId},
+        beneficiary_id INTEGER NOT NULL,
+        recipient_email VARCHAR(255) NOT NULL,
+        subject VARCHAR(255) NOT NULL,
+        status VARCHAR(50) DEFAULT 'sent',
+        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        opened_at TIMESTAMP,
+        smtp_message_id VARCHAR(255),
+        tracking_token UUID UNIQUE NOT NULL,
+        pdf_hash VARCHAR(64),
+        error_message TEXT,
         FOREIGN KEY (beneficiary_id) REFERENCES beneficiaries(id) ON DELETE CASCADE
       );
     `);

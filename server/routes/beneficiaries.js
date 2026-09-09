@@ -230,7 +230,8 @@ router.post('/', authenticateToken, uploadPhoto.single('photo'), async (req, res
       ipes_beneficiary,
       offer_type,
       days_per_week,
-      permanence_time
+      permanence_time,
+      email
     } = req.body;
 
     // Validate required fields
@@ -251,13 +252,13 @@ router.post('/', authenticateToken, uploadPhoto.single('photo'), async (req, res
       INSERT INTO beneficiaries (
         uuid, full_name, document_type, document_number, registered_hemi, rivi, status,
         age, gender, population_group, disability, phone, latitude, longitude,
-        economic_activity, ipes_beneficiary, offer_type, days_per_week, permanence_time, photo_path
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        economic_activity, ipes_beneficiary, offer_type, days_per_week, permanence_time, photo_path, email
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       uuid, full_name, document_type, document_number, registered_hemi, rivi || '', status,
       parseInt(age), gender, population_group, disability, phone || '',
       latitude ? parseFloat(latitude) : null, longitude ? parseFloat(longitude) : null,
-      economic_activity, ipes_beneficiary, offer_type || '', parseInt(days_per_week), permanence_time, photoPath
+      economic_activity, ipes_beneficiary, offer_type || '', parseInt(days_per_week), permanence_time, photoPath, email || ''
     ]);
 
     const inserted = await dbGet('SELECT id FROM beneficiaries WHERE uuid = ?', [uuid]);
@@ -307,7 +308,8 @@ router.put('/:id', authenticateToken, uploadPhoto.single('photo'), async (req, r
       ipes_beneficiary,
       offer_type,
       days_per_week,
-      permanence_time
+      permanence_time,
+      email
     } = req.body;
 
     // Validate duplicate document
@@ -343,6 +345,7 @@ router.put('/:id', authenticateToken, uploadPhoto.single('photo'), async (req, r
       population_group: population_group || oldRecord.population_group,
       disability: disability || oldRecord.disability,
       phone: phone !== undefined ? phone : oldRecord.phone,
+      email: email !== undefined ? email : oldRecord.email,
       latitude: latitude ? parseFloat(latitude) : oldRecord.latitude,
       longitude: longitude ? parseFloat(longitude) : oldRecord.longitude,
       economic_activity: economic_activity || oldRecord.economic_activity,
@@ -375,14 +378,14 @@ router.put('/:id', authenticateToken, uploadPhoto.single('photo'), async (req, r
       UPDATE beneficiaries SET
         full_name = ?, document_type = ?, document_number = ?, registered_hemi = ?, 
         rivi = ?, status = ?, age = ?, gender = ?, population_group = ?, 
-        disability = ?, phone = ?, latitude = ?, longitude = ?, economic_activity = ?, 
+        disability = ?, phone = ?, email = ?, latitude = ?, longitude = ?, economic_activity = ?, 
         ipes_beneficiary = ?, offer_type = ?, days_per_week = ?, permanence_time = ?, 
         photo_path = ?, updated_at = ?
       WHERE id = ?
     `, [
       updatedData.full_name, updatedData.document_type, updatedData.document_number, updatedData.registered_hemi,
       updatedData.rivi, updatedData.status, updatedData.age, updatedData.gender, updatedData.population_group,
-      updatedData.disability, updatedData.phone, updatedData.latitude, updatedData.longitude, updatedData.economic_activity,
+      updatedData.disability, updatedData.phone, updatedData.email, updatedData.latitude, updatedData.longitude, updatedData.economic_activity,
       updatedData.ipes_beneficiary, updatedData.offer_type, updatedData.days_per_week, updatedData.permanence_time,
       updatedData.photo_path, updatedData.updated_at, id
     ]);
@@ -510,7 +513,17 @@ router.post('/import', authenticateToken, uploadImportFile.single('file'), async
       'Hace cuánto tiempo está en la zona': 'permanence_time',
       'Foto': 'photo_url',
       'foto': 'photo_url',
+      'Foto': 'photo_url',
+      'foto': 'photo_url',
       'Fotografía': 'photo_url',
+      'CORREO ELECTRÓNICO': 'email',
+      'Correo electrónico': 'email',
+      'Correo Electronico': 'email',
+      'correo electronico': 'email',
+      'Correo': 'email',
+      'correo': 'email',
+      'Email': 'email',
+      'email': 'email',
       
       // Database/English column name fallbacks
       'full_name': 'full_name',
@@ -524,6 +537,7 @@ router.post('/import', authenticateToken, uploadImportFile.single('file'), async
       'population_group': 'population_group',
       'disability': 'disability',
       'phone': 'phone',
+      'email': 'email',
       'coordinates': 'coordinates',
       'economic_activity': 'economic_activity',
       'ipes_beneficiary': 'ipes_beneficiary',
@@ -710,15 +724,23 @@ router.post('/import', authenticateToken, uploadImportFile.single('file'), async
       }
 
       // Check duplicate document number in DB
-      const existingDoc = await dbGet('SELECT id, photo_path FROM beneficiaries WHERE document_number = ?', [docNumber]);
+      const existingDoc = await dbGet('SELECT id, photo_path, email FROM beneficiaries WHERE document_number = ?', [docNumber]);
       if (existingDoc) {
-        // If we have a photo URL and the record doesn't have one yet, update it
-        if (data.photo_url && !existingDoc.photo_path) {
-          await dbRun('UPDATE beneficiaries SET photo_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [data.photo_url, existingDoc.id]);
-          importedCount++;
-        } else if (data.photo_url && existingDoc.photo_path !== data.photo_url) {
-          // Always update to the new photo URL if it's different
-          await dbRun('UPDATE beneficiaries SET photo_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [data.photo_url, existingDoc.id]);
+        let needsUpdate = false;
+        let updatePhoto = existingDoc.photo_path;
+        let updateEmail = existingDoc.email;
+
+        if (data.photo_url && existingDoc.photo_path !== data.photo_url) {
+          updatePhoto = data.photo_url;
+          needsUpdate = true;
+        }
+        if (data.email && (!existingDoc.email || existingDoc.email !== data.email)) {
+          updateEmail = data.email;
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          await dbRun('UPDATE beneficiaries SET photo_path = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [updatePhoto, updateEmail, existingDoc.id]);
           importedCount++;
         } else {
           errorCount++;
@@ -760,12 +782,12 @@ router.post('/import', authenticateToken, uploadImportFile.single('file'), async
         await dbRun(`
           INSERT INTO beneficiaries (
             uuid, full_name, document_type, document_number, registered_hemi, rivi, status,
-            age, gender, population_group, disability, phone, latitude, longitude,
+            age, gender, population_group, disability, phone, email, latitude, longitude,
             economic_activity, ipes_beneficiary, offer_type, days_per_week, permanence_time, photo_path
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           uuid, data.full_name, data.document_type, docNumber, data.registered_hemi, data.rivi || '', status,
-          ageVal, data.gender, data.population_group, data.disability, data.phone || '', lat, lng,
+          ageVal, data.gender, data.population_group, data.disability, data.phone || '', data.email || '', lat, lng,
           data.economic_activity, data.ipes_beneficiary, data.offer_type || '', daysVal, data.permanence_time, data.photo_url || ''
         ]);
 

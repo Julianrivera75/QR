@@ -441,8 +441,12 @@ async function generateCardPdf(beneficiary, host) {
   // 5.5 Días Ubicación
   drawLabelValueInline('Días ub: ', `${beneficiary.days_per_week} d/sem`, 8.5);
 
-  // 5.6 Vigencia (Fecha de validez: 24/08/2026 - 24/08/2028)
-  drawLabelValueCentered('VIGENCIA', '24/08/2026 - 24/08/2028', 8, 8);
+  const today = new Date();
+  const end = new Date(today);
+  end.setFullYear(end.getFullYear() + 2);
+  const fmt = d => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  const vigenciaText = `${fmt(today)} - ${fmt(end)}`;
+  drawLabelValueCentered('VIGENCIA', vigenciaText, 8, 8);
 
   // 6. Bottom Section (Disclaimer Left, QR Right)
   const qrSize = 52;
@@ -648,4 +652,5 @@ router.post('/download-bulk', authenticateToken, async (req, res) => {
   }
 });
 
+router.generateCardPdf = generateCardPdf;
 module.exports = router;

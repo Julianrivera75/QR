@@ -189,6 +189,9 @@ document.addEventListener('DOMContentLoaded', () => {
       pageTitle.textContent = 'Trazabilidad y Auditoría';
       loadAuditLogs();
       loadScanLogs();
+    } else if (viewId === 'view-emails') {
+      pageTitle.textContent = 'Historial y Certificados de Envío';
+      loadEmailLogs();
     }
   }
 
@@ -486,6 +489,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="btn-icon-only action-view" data-id="${b.id}" title="Previsualizar Carné">
               <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             </button>
+            <button class="btn-icon-only action-email" data-id="${b.id}" data-name="${b.full_name}" data-email="${b.email || ''}" title="${b.email ? `Enviar Carné a ${b.email}` : 'Sin correo electrónico'}">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            </button>
+            <button class="btn-icon-only action-cert-send" data-id="${b.id}" title="Descargar Certificado Oficial de Envío (PDF)">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </button>
+            <button class="btn-icon-only action-cert-open" data-id="${b.id}" title="Descargar Certificado Oficial de Apertura / Lectura (PDF)">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+            </button>
             <button class="btn-icon-only action-edit" data-id="${b.id}" title="Editar Vendedor">
               <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
             </button>
@@ -537,6 +549,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btn.classList.contains('action-view')) {
       // Open card preview in a new window
       window.open(`/api/pdf/preview/${id}`, '_blank');
+    } else if (btn.classList.contains('action-email')) {
+      sendSingleBeneficiaryEmail(id, btn.dataset.name, btn.dataset.email);
+    } else if (btn.classList.contains('action-cert-send')) {
+      window.open(`/api/emails/certificate/beneficiary/${id}/send`, '_blank');
+    } else if (btn.classList.contains('action-cert-open')) {
+      window.open(`/api/emails/certificate/beneficiary/${id}/open`, '_blank');
     } else if (btn.classList.contains('action-edit')) {
       openEditModal(id);
     } else if (btn.classList.contains('action-qr')) {
@@ -546,7 +564,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ==================== CHECKBOX MULTI-SELECT & ZIP DOWNLOAD ====================
+  // Individual Email Sending function
+  function sendSingleBeneficiaryEmail(id, name, email) {
+    if (!email || !email.trim() || !email.includes('@')) {
+      const ask = confirm(`El vendedor "${name}" no tiene un correo electrónico registrado. ¿Deseas editar el registro para agregar su correo?`);
+      if (ask) openEditModal(id);
+      return;
+    }
+
+    const conf = confirm(`¿Confirmas el envío formal del carné en PDF al correo "${email}" del vendedor ${name}?`);
+    if (!conf) return;
+
+    fetch(`/api/emails/send/${id}`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(`✅ ${data.message}`);
+        } else {
+          alert(`❌ ${data.message || 'Error al enviar correo.'}`);
+        }
+      })
+      .catch(() => {
+        alert('❌ Error de comunicación al procesar el envío.');
+      });
+  }
+
+  // ==================== CHECKBOX MULTI-SELECT & ZIP / EMAIL DOWNLOAD ====================
+  const btnBulkEmail = document.getElementById('btn-bulk-email');
+  const selectedEmailCountEl = document.getElementById('selected-email-count');
+
   function setupTableCheckboxListeners() {
     const rowCheckboxes = document.querySelectorAll('.beneficiary-row-checkbox');
     
@@ -583,11 +629,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateBulkDownloadState() {
     const count = selectedBeneficiaryIds.size;
     selectedCountEl.textContent = count;
+    if (selectedEmailCountEl) selectedEmailCountEl.textContent = count;
     
     if (count > 0) {
       btnBulkDownload.classList.remove('hidden');
+      if (btnBulkEmail) btnBulkEmail.classList.remove('hidden');
     } else {
       btnBulkDownload.classList.add('hidden');
+      if (btnBulkEmail) btnBulkEmail.classList.add('hidden');
       checkboxSelectAll.checked = false;
     }
   }
@@ -709,6 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
           beneficiaryForm.disability.value = b.disability;
           beneficiaryForm.population_group.value = b.population_group;
           beneficiaryForm.phone.value = b.phone || '';
+          if (beneficiaryForm.email) beneficiaryForm.email.value = b.email || '';
           beneficiaryForm.latitude.value = b.latitude || '';
           beneficiaryForm.longitude.value = b.longitude || '';
           beneficiaryForm.registered_hemi.value = b.registered_hemi;
@@ -1063,6 +1113,187 @@ document.addEventListener('DOMContentLoaded', () => {
         <td><span class="status-badge ${badgeClass}">${scan.status_at_scan}</span></td>
       `;
       auditScansList.appendChild(tr);
+    });
+  }
+
+  // ==================== BULK EMAIL SENDING MODAL ====================
+  const modalBulkEmail = document.getElementById('modal-bulk-email');
+  const btnCloseBulkEmailModal = document.getElementById('btn-close-bulk-email-modal');
+  const btnCancelBulkEmailModal = document.getElementById('btn-cancel-bulk-email-modal');
+  const btnExecuteBulkEmail = document.getElementById('btn-execute-bulk-email');
+  const bulkEmailTotalSelected = document.getElementById('bulk-email-total-selected');
+  const bulkEmailProgress = document.getElementById('bulk-email-progress');
+  const bulkEmailResults = document.getElementById('bulk-email-results');
+  const bulkEmailResultsTitle = document.getElementById('bulk-email-results-title');
+  const bulkEmailLog = document.getElementById('bulk-email-log');
+
+  if (btnBulkEmail) {
+    btnBulkEmail.addEventListener('click', () => {
+      if (selectedBeneficiaryIds.size === 0) return;
+      bulkEmailTotalSelected.textContent = selectedBeneficiaryIds.size;
+      bulkEmailResults.classList.add('hidden');
+      bulkEmailProgress.classList.add('hidden');
+      btnExecuteBulkEmail.disabled = false;
+      btnExecuteBulkEmail.textContent = 'Iniciar Envío Masivo';
+      modalBulkEmail.classList.remove('hidden');
+    });
+  }
+
+  function closeBulkEmailModal() {
+    if (modalBulkEmail) modalBulkEmail.classList.add('hidden');
+  }
+  if (btnCloseBulkEmailModal) btnCloseBulkEmailModal.addEventListener('click', closeBulkEmailModal);
+  if (btnCancelBulkEmailModal) btnCancelBulkEmailModal.addEventListener('click', closeBulkEmailModal);
+
+  if (btnExecuteBulkEmail) {
+    btnExecuteBulkEmail.addEventListener('click', () => {
+      if (selectedBeneficiaryIds.size === 0) return;
+
+      btnExecuteBulkEmail.disabled = true;
+      bulkEmailProgress.classList.remove('hidden');
+      bulkEmailResults.classList.add('hidden');
+
+      fetch('/api/emails/send-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedBeneficiaryIds) })
+      })
+      .then(res => res.json())
+      .then(data => {
+        bulkEmailProgress.classList.add('hidden');
+        bulkEmailResults.classList.remove('hidden');
+
+        if (data.success) {
+          bulkEmailResultsTitle.textContent = `Proceso Finalizado — ${data.sentCount} enviados, ${data.failedCount} no enviados`;
+          let html = `<p class="text-green" style="font-weight:600;">✓ Se enviaron exitosamente ${data.sentCount} correos electrónicos con el carné adjunto.</p>`;
+          if (data.errors && data.errors.length > 0) {
+            html += `<p class="text-red" style="margin-top:10px; font-weight:600;">Vendedores sin envío:</p><ul style="padding-left:20px; font-size:0.85rem; color:#ef4444;">`;
+            data.errors.forEach(e => { html += `<li>${e}</li>`; });
+            html += `</ul>`;
+          }
+          bulkEmailLog.innerHTML = html;
+        } else {
+          bulkEmailResultsTitle.textContent = 'Error en el envío masivo';
+          bulkEmailLog.innerHTML = `<p class="text-red">${data.message || 'Ocurrió un error inesperado.'}</p>`;
+        }
+      })
+      .catch(() => {
+        bulkEmailProgress.classList.add('hidden');
+        bulkEmailResults.classList.remove('hidden');
+        bulkEmailResultsTitle.textContent = 'Error de comunicación';
+        bulkEmailLog.innerHTML = '<p class="text-red">No se pudo establecer conexión con el servidor.</p>';
+      });
+    });
+  }
+
+  // ==================== EMAIL LOGS AND CERTIFICATES ====================
+  const emailsList = document.getElementById('emails-list');
+  const emailSearchInput = document.getElementById('email-search-input');
+  const btnRefreshEmails = document.getElementById('btn-refresh-emails');
+  let cachedEmailLogs = [];
+
+  if (btnRefreshEmails) {
+    btnRefreshEmails.addEventListener('click', () => loadEmailLogs());
+  }
+
+  if (emailSearchInput) {
+    emailSearchInput.addEventListener('input', () => {
+      const q = emailSearchInput.value.toLowerCase().trim();
+      if (!q) {
+        renderEmailLogsTable(cachedEmailLogs);
+        return;
+      }
+      const filtered = cachedEmailLogs.filter(l => 
+        (l.beneficiary_name && l.beneficiary_name.toLowerCase().includes(q)) ||
+        (l.beneficiary_document && l.beneficiary_document.includes(q)) ||
+        (l.recipient_email && l.recipient_email.toLowerCase().includes(q))
+      );
+      renderEmailLogsTable(filtered);
+    });
+  }
+
+  function loadEmailLogs() {
+    if (!emailsList) return;
+    emailsList.innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner spinner-small" style="margin: auto;"></div></td></tr>';
+
+    fetch('/api/emails/logs')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          cachedEmailLogs = data.data || [];
+          renderEmailLogsTable(cachedEmailLogs);
+        } else {
+          emailsList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red">${data.message}</td></tr>`;
+        }
+      })
+      .catch(() => {
+        emailsList.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red">Error de comunicación al cargar historial de correos.</td></tr>';
+      });
+  }
+
+  function renderEmailLogsTable(logs) {
+    if (!emailsList) return;
+    emailsList.innerHTML = '';
+
+    if (!logs || logs.length === 0) {
+      emailsList.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No se registran envíos de correos en el sistema.</td></tr>';
+      return;
+    }
+
+    logs.forEach(l => {
+      const tr = document.createElement('tr');
+
+      const sentDate = l.sent_at ? new Date(l.sent_at).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const openDate = l.opened_at ? new Date(l.opened_at).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '<span class="text-muted">Pendiente</span>';
+
+      let statusBadge = '<span class="status-badge badge-info">Enviado</span>';
+      if (l.status === 'opened' || l.opened_at) {
+        statusBadge = '<span class="status-badge badge-success">Abierto / Confirmado</span>';
+      } else if (l.status === 'failed') {
+        statusBadge = '<span class="status-badge badge-danger">Fallido</span>';
+      }
+
+      const isOpen = l.status === 'opened' || Boolean(l.opened_at);
+
+      tr.innerHTML = `
+        <td>${sentDate}</td>
+        <td>
+          <div style="font-weight: 600;">${l.beneficiary_name || 'Desconocido'}</div>
+          <div style="font-size: 0.75rem; color: var(--color-text-muted);">${l.beneficiary_doc_type || 'CC'} ${l.beneficiary_document || ''}</div>
+        </td>
+        <td><code>${l.recipient_email}</code></td>
+        <td>${statusBadge}</td>
+        <td>${openDate}</td>
+        <td>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm btn-cert-send" data-id="${l.id}" title="Descargar Certificado Oficial de Despacho / Envío" style="padding: 4px 8px; font-size: 0.75rem;">
+              📜 Cert. Envío
+            </button>
+            <button class="btn btn-sm btn-cert-open ${isOpen ? 'btn-success' : 'btn-secondary'}" data-id="${l.id}" ${isOpen ? '' : 'disabled'} title="${isOpen ? 'Descargar Certificado Oficial de Apertura y Lectura' : 'El destinatario aún no ha abierto el correo'}" style="padding: 4px 8px; font-size: 0.75rem;">
+              📖 Cert. Lectura
+            </button>
+          </div>
+        </td>
+      `;
+      emailsList.appendChild(tr);
+    });
+  }
+
+  // Certificate download delegations
+  if (emailsList) {
+    emailsList.addEventListener('click', (e) => {
+      const sendBtn = e.target.closest('.btn-cert-send');
+      if (sendBtn) {
+        const id = sendBtn.dataset.id;
+        window.open(`/api/emails/certificate/${id}/send`, '_blank');
+        return;
+      }
+
+      const openBtn = e.target.closest('.btn-cert-open');
+      if (openBtn && !openBtn.disabled) {
+        const id = openBtn.dataset.id;
+        window.open(`/api/emails/certificate/${id}/open`, '_blank');
+      }
     });
   }
 });
