@@ -165,9 +165,9 @@ router.get('/', authenticateToken, async (req, res) => {
 // GET /api/beneficiaries/unique-values - For filter options
 router.get('/unique-values', authenticateToken, async (req, res) => {
   try {
-    const activities = await dbAll('SELECT DISTINCT economic_activity FROM beneficiaries WHERE economic_activity IS NOT NULL AND economic_activity != "" ORDER BY economic_activity ASC');
-    const offers = await dbAll('SELECT DISTINCT offer_type FROM beneficiaries WHERE offer_type IS NOT NULL AND offer_type != "" ORDER BY offer_type ASC');
-    const permanence = await dbAll('SELECT DISTINCT permanence_time FROM beneficiaries WHERE permanence_time IS NOT NULL AND permanence_time != "" ORDER BY permanence_time ASC');
+    const activities = await dbAll('SELECT DISTINCT economic_activity FROM beneficiaries WHERE economic_activity IS NOT NULL AND economic_activity != \'\' ORDER BY economic_activity ASC');
+    const offers = await dbAll('SELECT DISTINCT offer_type FROM beneficiaries WHERE offer_type IS NOT NULL AND offer_type != \'\' ORDER BY offer_type ASC');
+    const permanence = await dbAll('SELECT DISTINCT permanence_time FROM beneficiaries WHERE permanence_time IS NOT NULL AND permanence_time != \'\' ORDER BY permanence_time ASC');
 
     return res.json({
       success: true,
@@ -176,8 +176,8 @@ router.get('/unique-values', authenticateToken, async (req, res) => {
       permanence: permanence.map(r => r.permanence_time)
     });
   } catch (error) {
-    console.error('Error fetching unique values:', error);
-    return res.status(500).json({ success: false, message: 'Error al obtener valores para filtros.' });
+    console.error('Error fetching unique values:', error.message, error.stack);
+    return res.status(500).json({ success: false, message: 'Error al obtener valores para filtros: ' + error.message });
   }
 });
 
