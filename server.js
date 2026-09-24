@@ -1,20 +1,64 @@
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Behind Railway's proxy: trust the first hop so req.ip and secure cookies work
+app.set('trust proxy', 1);
+
+// Security headers (CSP, HSTS, X-Frame-Options, nosniff, etc.)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'blob:'],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: isProduction ? [] : null
+    }
+  }
+}));
+
+// Rate limiters
+const limitMessage = (message) => ({ success: false, message });
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: limitMessage('Demasiados intentos de inicio de sesión. Intente de nuevo en 15 minutos.')
+});
+const publicLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: limitMessage('Demasiadas consultas. Espere un momento e intente de nuevo.')
+});
 
 // Global Middlewares
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser());
 
-
-// Static Files serving
+// Static Files serving (photos are only served through /api/public/photo/:uuid)
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/public', publicLimiter);
+app.use('/api/emails/confirm', publicLimiter);
+app.use('/api/emails/track', publicLimiter);
 
 // Mount API routes
 app.use('/api/auth', require('./server/routes/auth'));
@@ -38,7 +82,7 @@ app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err.stack);
   res.status(500).json({
     success: false,
-    message: err.message || 'Ocurrió un error inesperado en el servidor.'
+    message: (!isProduction && err.message) || 'Ocurrió un error inesperado en el servidor.'
   });
 });
 

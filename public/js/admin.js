@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Escape untrusted values before interpolating into HTML templates
+  const esc = (v) => String(v ?? '').replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
+
   // App State
   let currentUser = null;
   let beneficiariesData = [];
@@ -320,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
       row.className = 'chart-bar-row';
       row.innerHTML = `
         <div class="chart-bar-label-group">
-          <span class="chart-bar-name">${name}</span>
+          <span class="chart-bar-name">${esc(name)}</span>
           <span>${count} (${percent}%)</span>
         </div>
         <div class="chart-bar-bg">
@@ -361,8 +364,8 @@ document.addEventListener('DOMContentLoaded', () => {
       col.className = 'chart-col';
       col.innerHTML = `
         <span class="chart-col-val" title="${count} visualizaciones">${count > 0 ? count : ''}</span>
-        <div class="chart-col-bar" data-val="${count}" title="${count} escaneos (${fullLabel})" style="height: 0%"></div>
-        <span class="chart-col-label" title="${fullLabel}">${label}</span>
+        <div class="chart-col-bar" data-val="${count}" title="${esc(count)} escaneos (${esc(fullLabel)})" style="height: 0%"></div>
+        <span class="chart-col-label" title="${esc(fullLabel)}">${esc(label)}</span>
       `;
       chartContainer.appendChild(col);
 
@@ -387,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const actSelect = document.getElementById('filter-activity');
           actSelect.innerHTML = '<option value="">Todas</option>';
           data.activities.forEach(act => {
-            actSelect.innerHTML += `<option value="${act}">${act}</option>`;
+            actSelect.innerHTML += `<option value="${esc(act)}">${esc(act)}</option>`;
           });
         }
       });
@@ -450,7 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
           pagination.total = data.total;
           renderBeneficiariesTable();
         } else {
-          beneficiariesList.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-red">${data.message}</td></tr>`;
+          beneficiariesList.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-red">${esc(data.message)}</td></tr>`;
         }
       })
       .catch(() => {
@@ -479,18 +482,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
       tr.innerHTML = `
         <td><input type="checkbox" class="beneficiary-row-checkbox" data-id="${b.id}" ${isChecked}></td>
-        <td style="font-weight: 600;">${b.full_name}</td>
-        <td>${b.document_type} ${b.document_number}</td>
-        <td>${b.registered_hemi}</td>
-        <td>${b.rivi || '<span class="text-muted">-</span>'}</td>
-        <td>${b.economic_activity}</td>
-        <td><span class="status-badge ${badgeClass}">${b.status}</span></td>
+        <td style="font-weight: 600;">${esc(b.full_name)}</td>
+        <td>${esc(b.document_type)} ${esc(b.document_number)}</td>
+        <td>${esc(b.registered_hemi)}</td>
+        <td>${b.rivi ? esc(b.rivi) : '<span class="text-muted">-</span>'}</td>
+        <td>${esc(b.economic_activity)}</td>
+        <td><span class="status-badge ${badgeClass}">${esc(b.status)}</span></td>
         <td>
           <div class="table-actions">
             <button class="btn-icon-only action-view" data-id="${b.id}" title="Previsualizar Carné">
               <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
             </button>
-            <button class="btn-icon-only action-email" data-id="${b.id}" data-name="${b.full_name}" data-email="${b.email || ''}" title="${b.email ? `Enviar Carné a ${b.email}` : 'Sin correo electrónico'}">
+            <button class="btn-icon-only action-email" data-id="${b.id}" data-name="${esc(b.full_name)}" data-email="${esc(b.email)}" title="${b.email ? `Enviar Carné a ${esc(b.email)}` : 'Sin correo electrónico'}">
               <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
             </button>
             <button class="btn-icon-only action-cert-send" data-id="${b.id}" title="Descargar Certificado Oficial de Envío (PDF)">
@@ -773,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           // Render image preview
           if (b.photo_path) {
-            formPhotoPreview.src = b.photo_path;
+            formPhotoPreview.src = `/api/public/photo/${encodeURIComponent(b.uuid)}`;
             formPhotoPreview.classList.remove('hidden');
             formPhotoSilhouette.classList.add('hidden');
           } else {
@@ -926,12 +929,12 @@ document.addEventListener('DOMContentLoaded', () => {
       importResults.classList.remove('hidden');
       
       if (data.success) {
-        importResultsTitle.innerHTML = `Importación Completada exitosamente. <br><span class="text-green">Registros importados: ${data.importedCount}</span>, <span class="text-red">Errores: ${data.errorCount}</span>`;
+        importResultsTitle.innerHTML = `Importación Completada exitosamente. <br><span class="text-green">Registros importados: ${esc(data.importedCount)}</span>, <span class="text-red">Errores: ${esc(data.errorCount)}</span>`;
         
         if (data.errors && data.errors.length > 0) {
-          let errHtml = data.errors.map(err => `<div>• ${err}</div>`).join('');
+          let errHtml = data.errors.map(err => `<div>• ${esc(err)}</div>`).join('');
           if (data.errorsNote) {
-            errHtml += `<div style="margin-top:8px;color:#aaa;font-style:italic;">• ${data.errorsNote}</div>`;
+            errHtml += `<div style="margin-top:8px;color:#aaa;font-style:italic;">• ${esc(data.errorsNote)}</div>`;
           }
           importLog.innerHTML = errHtml;
         } else {
@@ -941,14 +944,14 @@ document.addEventListener('DOMContentLoaded', () => {
         loadBeneficiaries();
       } else {
         importResultsTitle.innerHTML = `<span class="text-red">Error en la importación</span>`;
-        importLog.innerHTML = `<div>• ${data.message}</div>`;
+        importLog.innerHTML = `<div>• ${esc(data.message)}</div>`;
       }
     })
     .catch(err => {
       importProgress.classList.add('hidden');
       importResults.classList.remove('hidden');
       importResultsTitle.innerHTML = `<span class="text-red">Error crítico</span>`;
-      importLog.innerHTML = `<div>• No se pudo procesar el archivo. Detalle: ${err.message}</div>`;
+      importLog.innerHTML = `<div>• No se pudo procesar el archivo. Detalle: ${esc(err.message)}</div>`;
     });
   });
 
@@ -962,7 +965,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.success) {
           renderAuditLogsTable(data.data);
         } else {
-          auditChangesList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red">${data.message}</td></tr>`;
+          auditChangesList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red">${esc(data.message)}</td></tr>`;
         }
       })
       .catch(() => {
@@ -985,7 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const formattedDate = date.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
       // Action type label
-      let actionBadge = `<span class="status-badge badge-success">${log.action}</span>`;
+      let actionBadge = `<span class="status-badge badge-success">${esc(log.action)}</span>`;
       if (log.action === 'UPDATE') actionBadge = `<span class="status-badge badge-warning">MODIFICÓ</span>`;
       else if (log.action === 'DELETE') actionBadge = `<span class="status-badge badge-danger">ELIMINÓ</span>`;
       else if (log.action === 'REGENERATE_QR') actionBadge = `<span class="status-badge badge-danger">REGENERA QR</span>`;
@@ -1002,9 +1005,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const newVal = diffObj[field].new !== null ? diffObj[field].new : 'vacío';
             diffLines += `
               <div class="diff-line">
-                <span class="diff-field">${translateField(field)}:</span>
-                <span class="diff-old">${oldVal}</span> → 
-                <span class="diff-new">${newVal}</span>
+                <span class="diff-field">${esc(translateField(field))}:</span>
+                <span class="diff-old">${esc(oldVal)}</span> → 
+                <span class="diff-new">${esc(newVal)}</span>
               </div>
             `;
           }
@@ -1026,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (log.action === 'DELETE' && log.fields_changed) {
         try {
           const details = JSON.parse(log.fields_changed);
-          diffHtml = `<span class="text-red">Registro eliminado: ${details.full_name || ''} (${details.document || ''})</span>`;
+          diffHtml = `<span class="text-red">Registro eliminado: ${esc(details.full_name)} (${esc(details.document)})</span>`;
         } catch(e) {
           diffHtml = `<span class="text-red">Registro borrado permanentemente</span>`;
         }
@@ -1034,9 +1037,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       tr.innerHTML = `
         <td>${formattedDate}</td>
-        <td style="font-weight:600;">${log.user_full_name} (${log.user_username})</td>
-        <td>${log.beneficiary_name || '<span class="text-muted">N/A</span>'}</td>
-        <td>${log.beneficiary_document || '<span class="text-muted">N/A</span>'}</td>
+        <td style="font-weight:600;">${esc(log.user_full_name)} (${esc(log.user_username)})</td>
+        <td>${log.beneficiary_name ? esc(log.beneficiary_name) : '<span class="text-muted">N/A</span>'}</td>
+        <td>${log.beneficiary_document ? esc(log.beneficiary_document) : '<span class="text-muted">N/A</span>'}</td>
         <td>${actionBadge}</td>
         <td>${diffHtml}</td>
       `;
@@ -1079,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.success) {
           renderScanLogsTable(data.data);
         } else {
-          auditScansList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red">${data.message}</td></tr>`;
+          auditScansList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red">${esc(data.message)}</td></tr>`;
         }
       })
       .catch(() => {
@@ -1107,11 +1110,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       tr.innerHTML = `
         <td>${formattedDate}</td>
-        <td style="font-weight: 600;">${scan.beneficiary_name || '<span class="text-muted">Inexistente/Borrado</span>'}</td>
-        <td>${scan.beneficiary_document || '<span class="text-muted">N/A</span>'}</td>
-        <td><code>${scan.ip_address}</code></td>
-        <td style="font-size: 0.75rem; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${scan.user_agent}">${scan.user_agent}</td>
-        <td><span class="status-badge ${badgeClass}">${scan.status_at_scan}</span></td>
+        <td style="font-weight: 600;">${scan.beneficiary_name ? esc(scan.beneficiary_name) : '<span class="text-muted">Inexistente/Borrado</span>'}</td>
+        <td>${scan.beneficiary_document ? esc(scan.beneficiary_document) : '<span class="text-muted">N/A</span>'}</td>
+        <td><code>${esc(scan.ip_address)}</code></td>
+        <td style="font-size: 0.75rem; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${esc(scan.user_agent)}">${esc(scan.user_agent)}</td>
+        <td><span class="status-badge ${badgeClass}">${esc(scan.status_at_scan)}</span></td>
       `;
       auditScansList.appendChild(tr);
     });
@@ -1166,16 +1169,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (data.success) {
           bulkEmailResultsTitle.textContent = `Proceso Finalizado — ${data.sentCount} enviados, ${data.failedCount} no enviados`;
-          let html = `<p class="text-green" style="font-weight:600;">✓ Se enviaron exitosamente ${data.sentCount} correos electrónicos con el carné adjunto.</p>`;
+          let html = `<p class="text-green" style="font-weight:600;">✓ Se enviaron exitosamente ${esc(data.sentCount)} correos electrónicos con el carné adjunto.</p>`;
           if (data.errors && data.errors.length > 0) {
             html += `<p class="text-red" style="margin-top:10px; font-weight:600;">Vendedores sin envío:</p><ul style="padding-left:20px; font-size:0.85rem; color:#ef4444;">`;
-            data.errors.forEach(e => { html += `<li>${e}</li>`; });
+            data.errors.forEach(e => { html += `<li>${esc(e)}</li>`; });
             html += `</ul>`;
           }
           bulkEmailLog.innerHTML = html;
         } else {
           bulkEmailResultsTitle.textContent = 'Error en el envío masivo';
-          bulkEmailLog.innerHTML = `<p class="text-red">${data.message || 'Ocurrió un error inesperado.'}</p>`;
+          bulkEmailLog.innerHTML = `<p class="text-red">${esc(data.message || 'Ocurrió un error inesperado.')}</p>`;
         }
       })
       .catch(() => {
@@ -1224,7 +1227,7 @@ document.addEventListener('DOMContentLoaded', () => {
           cachedEmailLogs = data.data || [];
           renderEmailLogsTable(cachedEmailLogs);
         } else {
-          emailsList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red">${data.message}</td></tr>`;
+          emailsList.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-red">${esc(data.message)}</td></tr>`;
         }
       })
       .catch(() => {
@@ -1259,10 +1262,10 @@ document.addEventListener('DOMContentLoaded', () => {
       tr.innerHTML = `
         <td>${sentDate}</td>
         <td>
-          <div style="font-weight: 600;">${l.beneficiary_name || 'Desconocido'}</div>
-          <div style="font-size: 0.75rem; color: var(--color-text-muted);">${l.beneficiary_doc_type || 'CC'} ${l.beneficiary_document || ''}</div>
+          <div style="font-weight: 600;">${esc(l.beneficiary_name || 'Desconocido')}</div>
+          <div style="font-size: 0.75rem; color: var(--color-text-muted);">${esc(l.beneficiary_doc_type || 'CC')} ${esc(l.beneficiary_document)}</div>
         </td>
-        <td><code>${l.recipient_email}</code></td>
+        <td><code>${esc(l.recipient_email)}</code></td>
         <td>${statusBadge}</td>
         <td>${openDate}</td>
         <td>

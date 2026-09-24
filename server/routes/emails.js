@@ -5,6 +5,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { sendCarnetEmail } = require('../utils/mailer');
 const { generateSendCertificatePdf, generateOpenCertificatePdf } = require('../utils/certificates');
 const { generateCardPdf } = require('./pdf');
+const { publicHost } = require('../utils/host');
 
 // 1x1 Transparent GIF Buffer for tracking pixel
 const TRANSPARENT_GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
@@ -59,7 +60,7 @@ router.post('/send/:id', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'El beneficiario no tiene un correo electrónico registrado válido.' });
     }
 
-    const host = req.get('host');
+    const host = publicHost(req);
     const result = await sendCarnetEmail(beneficiary, host);
 
     // Insert into email_logs
@@ -121,7 +122,7 @@ router.post('/send-bulk', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'No se encontraron beneficiarios coincidentes.' });
     }
 
-    const host = req.get('host');
+    const host = publicHost(req);
     let sentCount = 0;
     let failedCount = 0;
     const errors = [];
@@ -175,6 +176,13 @@ router.get('/confirm/:token', async (req, res) => {
       return res.status(404).send('Enlace de confirmación no válido o expirado.');
     }
 
+    // Links expire after CONFIRM_LINK_TTL_DAYS (default 30); admins can resend the card
+    const ttlDays = parseInt(process.env.CONFIRM_LINK_TTL_DAYS, 10) || 30;
+    const sentAt = new Date(log.sent_at);
+    if (!isNaN(sentAt) && Date.now() - sentAt.getTime() > ttlDays * 24 * 60 * 60 * 1000) {
+      return res.status(410).send('Este enlace ha expirado. Solicite un nuevo envío del carné a la Alcaldía Local.');
+    }
+
     // Update status to 'opened' with current timestamp
     await dbRun(`
       UPDATE email_logs 
@@ -188,7 +196,7 @@ router.get('/confirm/:token', async (req, res) => {
       return res.status(404).send('Beneficiario no encontrado.');
     }
 
-    const host = req.get('host');
+    const host = publicHost(req);
     const pdfBytes = await generateCardPdf(beneficiary, host);
 
 
@@ -219,6 +227,8 @@ router.get('/track/:token', async (req, res) => {
 
   res.contentType('image/gif');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  // Allow webmail clients on other origins to load the tracking pixel
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   return res.send(TRANSPARENT_GIF);
 });
 
@@ -235,7 +245,7 @@ router.get('/certificate/:id/send', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Beneficiario no encontrado.' });
     }
 
-    const host = req.get('host');
+    const host = publicHost(req);
     const certBytes = await generateSendCertificatePdf(log, beneficiary, host);
 
     res.contentType('application/pdf');
@@ -265,7 +275,7 @@ router.get('/certificate/:id/open', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Beneficiario no encontrado.' });
     }
 
-    const host = req.get('host');
+    const host = publicHost(req);
     const certBytes = await generateOpenCertificatePdf(log, beneficiary, host);
 
     res.contentType('application/pdf');
@@ -292,7 +302,7 @@ router.get('/certificate/beneficiary/:beneficiaryId/send', authenticateToken, as
       return res.status(404).send(`No se registra ningún envío de correo previo para el vendedor ${beneficiary.full_name}. Debe enviarle el carné por correo primero.`);
     }
 
-    const host = req.get('host');
+    const host = publicHost(req);
     const certBytes = await generateSendCertificatePdf(log, beneficiary, host);
 
     res.contentType('application/pdf');
@@ -323,7 +333,7 @@ router.get('/certificate/beneficiary/:beneficiaryId/open', authenticateToken, as
       return res.status(400).send(`El vendedor ${beneficiary.full_name} aún no ha abierto ni confirmado la recepción de su carné.`);
     }
 
-    const host = req.get('host');
+    const host = publicHost(req);
     const certBytes = await generateOpenCertificatePdf(log, beneficiary, host);
 
     res.contentType('application/pdf');

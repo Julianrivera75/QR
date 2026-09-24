@@ -34,3 +34,7 @@ desktop.ini
 .idea/
 
 *.xlsx
+
+# Informes con datos personales de beneficiarios
+informe_duplicados.*
+scratch/informe_duplicados.*

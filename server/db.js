@@ -154,14 +154,37 @@ async function initializeDatabase() {
 }
 
 async function seedUsers() {
-  // Ensure the admin user always exists (upsert)
-  const adminHash = '$2a$10$G99SuuFshmPV9E4E1OwnmeevYadmGOYIBzdRO1XqxhQzw0pqGwOr2'; // bcrypt hash of "admin123"
-  await dbRun(`
-    INSERT INTO users (username, password_hash, full_name)
-    VALUES (?, ?, ?)
-    ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, full_name = EXCLUDED.full_name;
-  `, ['admin', adminHash, 'Administrador General']);
-  console.log('Admin user ensured (admin / admin123)');
+  const envPassword = process.env.ADMIN_PASSWORD;
+  const existing = await dbGet('SELECT id, password_hash FROM users WHERE username = ?', ['admin']);
+
+  // ADMIN_PASSWORD sets (or rotates) the admin password on startup
+  if (envPassword) {
+    if (envPassword.length < 12) {
+      console.warn('ADMIN_PASSWORD debe tener al menos 12 caracteres. No se aplicó el cambio.');
+    } else {
+      const hash = await bcrypt.hash(envPassword, 12);
+      await dbRun(`
+        INSERT INTO users (username, password_hash, full_name)
+        VALUES (?, ?, ?)
+        ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash;
+      `, ['admin', hash, 'Administrador General']);
+      console.log('Contraseña de admin aplicada desde ADMIN_PASSWORD.');
+      return;
+    }
+  }
+
+  if (!existing) {
+    // First run without ADMIN_PASSWORD: create admin with a one-time random password
+    const tempPassword = require('crypto').randomBytes(12).toString('base64url');
+    const hash = await bcrypt.hash(tempPassword, 12);
+    await dbRun('INSERT INTO users (username, password_hash, full_name) VALUES (?, ?, ?)', ['admin', hash, 'Administrador General']);
+    console.log(`Usuario admin creado con contraseña temporal: ${tempPassword} (defina ADMIN_PASSWORD para cambiarla)`);
+    return;
+  }
+
+  if (await bcrypt.compare('admin123', existing.password_hash)) {
+    console.warn('ADVERTENCIA: el usuario admin usa la contraseña por defecto. Defina ADMIN_PASSWORD.');
+  }
 }
 
 async function seedBeneficiaries() {

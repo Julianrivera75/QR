@@ -1,6 +1,13 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'plataforma-qr-secreto-super-seguro-2026';
+const crypto = require('crypto');
+
+// Without JWT_SECRET a random per-process secret is used: sessions end on restart
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  console.warn('JWT_SECRET no definido o menor a 32 caracteres. Se usa un secreto temporal; las sesiones se cerrarán al reiniciar.');
+  JWT_SECRET = crypto.randomBytes(48).toString('hex');
+}
 
 const authenticateToken = (req, res, next) => {
   // Read token from cookies (cookies are parsed by cookie-parser middleware)

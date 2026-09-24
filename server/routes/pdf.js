@@ -9,6 +9,7 @@ const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const JSZip = require('jszip');
 const { dbGet, dbAll } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
+const { publicHost } = require('../utils/host');
 
 // Helper to fetch a URL and return as Buffer, following redirects
 function fetchUrl(url, redirectCount) {
@@ -581,7 +582,7 @@ router.get('/preview/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Beneficiario no encontrado.' });
     }
 
-    const host = req.get('host');
+    const host = publicHost(req);
     const pdfBytes = await generateCardPdf(beneficiary, host);
 
     res.contentType('application/pdf');
@@ -601,7 +602,7 @@ router.get('/download/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Beneficiario no encontrado.' });
     }
 
-    const host = req.get('host');
+    const host = publicHost(req);
     const pdfBytes = await generateCardPdf(beneficiary, host);
 
     res.contentType('application/pdf');
@@ -631,7 +632,7 @@ router.post('/download-bulk', authenticateToken, async (req, res) => {
     }
 
     const zip = new JSZip();
-    const host = req.get('host');
+    const host = publicHost(req);
 
     for (const b of beneficiaries) {
       const pdfBytes = await generateCardPdf(b, host);

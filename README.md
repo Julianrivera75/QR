@@ -76,13 +76,26 @@ Esta es una aplicación web segura diseñada para administrar una base de datos 
 
 ---
 
-## Credenciales por Defecto
+## Variables de Entorno
 
-El sistema se inicializa automáticamente con la siguiente cuenta de administrador en la base de datos:
-- **Usuario**: `admin`
-- **Contraseña**: `admin123`
+| Variable | Descripción |
+|----------|-------------|
+| `ADMIN_PASSWORD` | Contraseña del usuario `admin` (mínimo 12 caracteres). Se aplica en cada arranque, lo que permite rotarla. Si no se define en el primer arranque, se genera una contraseña temporal que se muestra una sola vez en los logs. |
+| `JWT_SECRET` | Secreto de firma de sesiones (mínimo 32 caracteres). Sin él se usa un secreto temporal y las sesiones se cierran al reiniciar. |
+| `BASE_URL` | URL pública de la plataforma (ej. `https://carnets.dominio.gov.co`). Fija el dominio usado en los QR, correos y certificados. |
+| `DATABASE_URL` | Cadena de conexión PostgreSQL. Sin ella se usa SQLite local. |
+| `CONFIRM_LINK_TTL_DAYS` | Días de vigencia del enlace de descarga enviado por correo (por defecto 30). |
+| `NODE_ENV` | `production` activa cookies seguras, HTTPS obligatorio y oculta detalles de errores. |
+| `SENDGRID_API_KEY`, `SENDGRID_FROM` | Envío de correos por SendGrid. |
 
-*(Puedes cambiar la contraseña o agregar nuevos administradores registrándolos en la base de datos SQLite).*
+## Seguridad
+
+- Contraseñas con bcrypt y sesión JWT en cookie `httpOnly`, `SameSite=strict` y `Secure` en producción.
+- Límite de intentos de inicio de sesión (10 cada 15 minutos por IP) y de consultas públicas (120 por minuto por IP).
+- Cabeceras de seguridad con Helmet: CSP, HSTS, `X-Frame-Options`, `nosniff`.
+- Consultas SQL parametrizadas y escape de todo dato dinámico en el panel administrativo.
+- Las fotografías no se exponen como archivos estáticos; se sirven solo a través de `/api/public/photo/:uuid`.
+- El portal público enmascara el documento y omite teléfono, correo, edad, género, grupo poblacional, discapacidad y ubicación.
 
 ---
 

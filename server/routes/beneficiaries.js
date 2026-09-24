@@ -51,7 +51,14 @@ const importStorage = multer.diskStorage({
     cb(null, 'import-' + Date.now() + path.extname(file.originalname));
   }
 });
-const uploadImportFile = multer({ storage: importStorage });
+const uploadImportFile = multer({
+  storage: importStorage,
+  fileFilter: (req, file, cb) => {
+    if (/\.(xlsx|xls|csv)$/i.test(file.originalname)) return cb(null, true);
+    cb(new Error('Solo se permiten archivos Excel (.xlsx, .xls) o CSV'));
+  },
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB limit
+});
 
 // Helper to log audit events
 async function logAuditEvent(userId, beneficiaryId, action, fieldsChangedObj) {
