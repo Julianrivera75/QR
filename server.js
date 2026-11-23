@@ -12,6 +12,14 @@ const isProduction = process.env.NODE_ENV === 'production';
 // Behind Railway's proxy: trust the first hop so req.ip and secure cookies work
 app.set('trust proxy', 1);
 
+// Domain migration: when REDIRECT_TO is set (only on the old deployment), every
+// request is forwarded to the new domain keeping path and query, so QR codes and
+// e-mail links that were already handed out keep working. 308 preserves the method.
+if (process.env.REDIRECT_TO) {
+  const target = process.env.REDIRECT_TO.replace(/\/+$/, '');
+  app.use((req, res) => res.redirect(308, target + req.originalUrl));
+}
+
 // Security headers (CSP, HSTS, X-Frame-Options, nosniff, etc.)
 app.use(helmet({
   contentSecurityPolicy: {
