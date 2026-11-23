@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const docEl = document.getElementById('beneficiary-doc');
   const riviEl = document.getElementById('beneficiary-rivi');
   const activityEl = document.getElementById('beneficiary-activity');
-  const vigenciaEl = document.getElementById('beneficiary-vigencia');
   const photoEl = document.getElementById('beneficiary-photo');
   const photoPlaceholder = document.getElementById('photo-placeholder');
   const statusBadge = document.getElementById('beneficiary-status-badge');
@@ -48,15 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
       docEl.textContent = `${b.document_type} ${b.document_number}`;
       riviEl.textContent = b.rivi || 'No Registra';
       activityEl.textContent = b.economic_activity;
-
-      // Display validity dates
-      if (b.validity_start && b.validity_end) {
-        const startFormatted = formatDate(b.validity_start);
-        const endFormatted = formatDate(b.validity_end);
-        vigenciaEl.textContent = `${startFormatted} - ${endFormatted}`;
-      } else {
-        vigenciaEl.textContent = 'No disponible';
-      }
 
       // Handle photograph rendering
       if (b.photo_path) {
