@@ -432,22 +432,8 @@ async function generateCardPdf(beneficiary, host) {
   // 5.2 C.C.
   drawLabelValueInline('C.C. ', beneficiary.document_number, 8.5);
 
-  // 5.3 RIVI
-  const riviVal = beneficiary.rivi && beneficiary.rivi.trim() !== '' ? beneficiary.rivi : 'NO REGISTRA';
-  drawLabelValueInline('RIVI: ', riviVal, 8.5);
-
-  // 5.4 Actividad Económica
+  // 5.3 Actividad Económica
   drawLabelValueCentered('ACTIVIDAD ECONÓMICA', beneficiary.economic_activity.toUpperCase(), 8.5, 9);
-
-  // 5.5 Días Ubicación
-  drawLabelValueInline('Días ub: ', `${beneficiary.days_per_week} d/sem`, 8.5);
-
-  const today = new Date();
-  const end = new Date(today);
-  end.setFullYear(end.getFullYear() + 2);
-  const fmt = d => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-  const vigenciaText = `${fmt(today)} - ${fmt(end)}`;
-  drawLabelValueCentered('VIGENCIA', vigenciaText, 8, 8);
 
   // 6. Bottom Section (Disclaimer Left, QR Right)
   const qrSize = 52;
@@ -481,9 +467,9 @@ async function generateCardPdf(beneficiary, host) {
     console.error('Error generating QR code for PDF:', qrErr);
   }
 
-  // Label "ESCANEE PARA VERIFICAR VIGENCIA"
+  // Label "ESCANEE PARA VERIFICAR AUTENTICIDAD"
   const qrLabelText = 'ESCANEE PARA';
-  const qrLabelText2 = 'VERIFICAR VIGENCIA';
+  const qrLabelText2 = 'VERIFICAR AUTENTICIDAD';
   const qrLabelSize = 5.5;
   
   const qrLabelW1 = fontHelveticaBold.widthOfTextAtSize(qrLabelText, qrLabelSize);
