@@ -104,3 +104,20 @@ Esta es una aplicación web segura diseñada para administrar una base de datos 
 Por cada registro se almacena la siguiente información:
 - **Datos Estructurados**: Nombre completo, Tipo de documento (CC, CE, PEP, PPT, Pasaporte), Número de documento de identidad, Registro en HEMI (Sí/No), RIVI, Estado (Activo/Inactivo/Revocado), Edad, Género (Masculino/Femenino/Otro), Grupo Poblacional, Presenta discapacidad (Sí/No), Teléfono, Coordenadas (Latitud/Longitud), Tipo de actividad económica, Beneficiario oferta IPES (Sí/No), Tipo de oferta, Días de ubicación por semana, Tiempo de permanencia.
 - **Datos No Estructurados**: Foto (ruta del archivo JPG/PNG), Código QR único (Token UUIDv4 autogenerado).
+
+---
+
+## Sincronizar con una base oficial (Excel)
+
+`scripts/sync_base.js` reemplaza el contenido de `beneficiaries` por el de un Excel oficial sin cambiar el QR de quien sigue en la base:
+
+- Empareja por número de documento (también si Excel quitó ceros a la izquierda o espacios).
+- Actualiza los datos de los registros existentes (foto y correo solo si el Excel los trae), inserta los nuevos y elimina los que ya no están.
+- Los documentos "No tiene" repetidos reciben un identificador provisional `SD-<fila>`.
+
+```bash
+DATABASE_URL=... node scripts/sync_base.js base.xlsx --details   # simulación
+DATABASE_URL=... node scripts/sync_base.js base.xlsx --apply     # aplica en una transacción
+```
+
+En Railway la base solo tiene dirección interna: se ejecuta dentro del contenedor con `railway ssh --service QR` (el Excel no se sube al repositorio).
