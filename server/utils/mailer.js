@@ -34,8 +34,6 @@ function getTransporter() {
 
 // Generate institutional HTML email
 function generateEmailHtml({ beneficiary, confirmUrl, trackUrl }) {
-  const validityText = '24/08/2026 - 24/08/2028';
-
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -90,16 +88,8 @@ function generateEmailHtml({ beneficiary, confirmUrl, trackUrl }) {
             <td style="color: #0f172a; font-weight: 700; text-align: right;">${beneficiary.document_type} ${beneficiary.document_number}</td>
           </tr>
           <tr>
-            <td style="color: #475569; font-weight: 600;">Código RIVI:</td>
-            <td style="color: #0f172a; font-weight: 700; text-align: right;">${beneficiary.rivi || 'No Registra'}</td>
-          </tr>
-          <tr>
             <td style="color: #475569; font-weight: 600;">Actividad Económica:</td>
             <td style="color: #0f172a; font-weight: 700; text-align: right;">${beneficiary.economic_activity}</td>
-          </tr>
-          <tr>
-            <td style="color: #475569; font-weight: 600;">Periodo de Vigencia:</td>
-            <td style="color: #162b63; font-weight: 700; text-align: right;">${validityText}</td>
           </tr>
         </table>
       </div>

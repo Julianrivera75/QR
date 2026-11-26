@@ -131,9 +131,7 @@ async function generateSendCertificatePdf(emailLog, beneficiary, host) {
   const bRows = [
     ['Nombre Completo:', (beneficiary.full_name || '').toUpperCase()],
     ['Documento de Identidad:', `${beneficiary.document_type || 'CC'} ${beneficiary.document_number}`],
-    ['Código RIVI:', beneficiary.rivi || 'No Registra'],
-    ['Actividad Económica:', beneficiary.economic_activity || 'No Definido'],
-    ['Periodo de Vigencia:', '24/08/2026 - 24/08/2028']
+    ['Actividad Económica:', beneficiary.economic_activity || 'No Definido']
   ];
 
   let by = y - 36;
@@ -156,7 +154,11 @@ async function generateSendCertificatePdf(emailLog, beneficiary, host) {
     borderWidth: 1
   });
 
-  page.drawText('2. EVIDENCIA TÉCNICA DE DESPACHO SMTP (OFFICE 365)', {
+  // Envío manual: el operador lo envió desde el buzón institucional en el navegador
+  const manual = String(emailLog.smtp_message_id || '').startsWith('manual:');
+  const operador = manual ? String(emailLog.smtp_message_id).slice(7) : '';
+
+  page.drawText(manual ? '2. EVIDENCIA DE DESPACHO DESDE BUZÓN INSTITUCIONAL' : '2. EVIDENCIA TÉCNICA DE DESPACHO SMTP (OFFICE 365)', {
     x: 55,
     y: y - 18,
     size: 9.5,
@@ -164,9 +166,17 @@ async function generateSendCertificatePdf(emailLog, beneficiary, host) {
     color: colorNavy
   });
 
-  const sentDate = emailLog.sent_at ? new Date(emailLog.sent_at).toLocaleString('es-CO') : new Date().toLocaleString('es-CO');
+  const sentDate = emailLog.sent_at ? new Date(emailLog.sent_at).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' });
 
-  const techRows = [
+  const techRows = manual ? [
+    ['Correo Destinatario:', emailLog.recipient_email || ''],
+    ['Fecha y Hora de Envío:', sentDate],
+    ['Asunto:', emailLog.subject || 'Carné Oficial'],
+    ['Medio de Envío:', 'Buzón institucional (correo web), envío manual'],
+    ['Envío registrado por:', operador || 'Administrador'],
+    ['Identificador Único (Token):', emailLog.tracking_token || ''],
+    ['Estado:', 'ENVÍO REGISTRADO POR EL OPERADOR']
+  ] : [
     ['Correo Destinatario:', emailLog.recipient_email || ''],
     ['Fecha y Hora de Salida:', sentDate],
     ['Asunto de Transmisión:', emailLog.subject || 'Carné Oficial'],
@@ -198,7 +208,7 @@ async function generateSendCertificatePdf(emailLog, beneficiary, host) {
     borderWidth: 1
   });
 
-  page.drawText('3. FIRMA CRIPTOGRÁFICA DEL DOCUMENTO ADJUNTO', {
+  page.drawText(manual ? '3. FORMA DE ENTREGA DEL CARNÉ' : '3. FIRMA CRIPTOGRÁFICA DEL DOCUMENTO ADJUNTO', {
     x: 55,
     y: y - 18,
     size: 9.5,
@@ -206,8 +216,13 @@ async function generateSendCertificatePdf(emailLog, beneficiary, host) {
     color: colorNavy
   });
 
-  page.drawText('Hash SHA-256 del PDF:', { x: 55, y: y - 36, size: 8, font: fontHelveticaBold, color: colorDarkGray });
-  page.drawText(emailLog.pdf_hash || 'No disponible', { x: 55, y: y - 50, size: 7.5, font: fontHelvetica, color: colorNavy });
+  if (manual) {
+    page.drawText('El carné se entrega mediante enlace personal de descarga incluido en el mensaje.', { x: 55, y: y - 36, size: 8, font: fontHelvetica, color: colorDarkGray });
+    page.drawText('La descarga por el titular queda registrada y se acredita con el certificado de lectura.', { x: 55, y: y - 50, size: 8, font: fontHelvetica, color: colorDarkGray });
+  } else {
+    page.drawText('Hash SHA-256 del PDF:', { x: 55, y: y - 36, size: 8, font: fontHelveticaBold, color: colorDarkGray });
+    page.drawText(emailLog.pdf_hash || 'No disponible', { x: 55, y: y - 50, size: 7.5, font: fontHelvetica, color: colorNavy });
+  }
 
   y -= 95;
 
@@ -229,14 +244,16 @@ async function generateSendCertificatePdf(emailLog, beneficiary, host) {
 
   // Stamp text
   page.drawText('CERTIFICACIÓN OFICIAL VÁLIDA', { x: 45, y: qrY + 45, size: 9, font: fontHelveticaBold, color: colorNavy });
-  page.drawText('Este documento constituye prueba electrónica válida de notificación y entrega según los estándares técnicos del servidor de correo institucional.', {
+  page.drawText(manual
+    ? 'Registro del envío en el sistema. El mensaje consta en Elementos enviados del buzón institucional.'
+    : 'Este documento constituye prueba electrónica válida de notificación y entrega según los estándares técnicos del servidor de correo institucional.', {
     x: 45,
     y: qrY + 30,
     size: 7.5,
     font: fontHelvetica,
     color: colorDarkGray
   });
-  page.drawText(`Fecha de expedición del certificado: ${new Date().toLocaleString('es-CO')}`, {
+  page.drawText(`Fecha de expedición del certificado: ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`, {
     x: 45,
     y: qrY + 15,
     size: 7.5,
@@ -353,9 +370,7 @@ async function generateOpenCertificatePdf(emailLog, beneficiary, host) {
   const bRows = [
     ['Nombre Completo:', (beneficiary.full_name || '').toUpperCase()],
     ['Documento de Identidad:', `${beneficiary.document_type || 'CC'} ${beneficiary.document_number}`],
-    ['Código RIVI:', beneficiary.rivi || 'No Registra'],
     ['Correo Electrónico:', emailLog.recipient_email || ''],
-    ['Periodo de Vigencia:', '24/08/2026 - 24/08/2028']
   ];
 
   let by = y - 36;
@@ -386,8 +401,8 @@ async function generateOpenCertificatePdf(emailLog, beneficiary, host) {
     color: colorNavy
   });
 
-  const sentDate = emailLog.sent_at ? new Date(emailLog.sent_at).toLocaleString('es-CO') : '-';
-  const openDate = emailLog.opened_at ? new Date(emailLog.opened_at).toLocaleString('es-CO') : 'Confirmado';
+  const sentDate = emailLog.sent_at ? new Date(emailLog.sent_at).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : '-';
+  const openDate = emailLog.opened_at ? new Date(emailLog.opened_at).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : 'Confirmado';
 
   const readRows = [
     ['Fecha y Hora de Envío:', sentDate],
@@ -432,7 +447,7 @@ async function generateOpenCertificatePdf(emailLog, beneficiary, host) {
     font: fontHelvetica,
     color: colorDarkGray
   });
-  page.drawText(`Certificado generado el: ${new Date().toLocaleString('es-CO')}`, {
+  page.drawText(`Certificado generado el: ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`, {
     x: 45,
     y: qrY + 15,
     size: 7.5,

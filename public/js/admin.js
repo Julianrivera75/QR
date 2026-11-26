@@ -196,6 +196,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (viewId === 'view-emails') {
       pageTitle.textContent = 'Historial y Certificados de Envío';
       loadEmailLogs();
+    } else if (viewId === 'view-envio-manual') {
+      pageTitle.textContent = 'Envío de Carnés por Outlook';
+      if (window.cargarEnvioManual) window.cargarEnvioManual();
     }
   }
 

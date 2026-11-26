@@ -87,6 +87,13 @@
           </svg>
           <span>Historial de Envíos</span>
         </button>
+        <button class="nav-item" data-target="view-envio-manual">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+          <span>Envío por Outlook</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -396,6 +403,64 @@
         </div>
       </div>
 
+      <!-- TAB: ENVÍO MANUAL DESDE EL BUZÓN INSTITUCIONAL -->
+      <div id="view-envio-manual" class="tab-view hidden">
+        <div class="card-glass" style="padding: 16px 20px; margin-bottom: 15px;">
+          <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+            <div style="font-size:0.85rem; line-height:1.6;">
+              <strong>Cómo enviar:</strong>
+              1. Pulse <strong>Redactar</strong>: se abre el correo listo en una pestaña nueva.
+              2. Revíselo y pulse <strong>Enviar</strong> en su correo.
+              3. Vuelva aquí y pulse <strong>Marcar enviado</strong>.
+              Cuando el vendedor abre su enlace, el estado pasa a <strong>Descargado</strong>.
+            </div>
+            <label style="font-size:0.85rem; display:flex; gap:8px; align-items:center;">
+              Correo:
+              <select id="envio-cliente" style="min-width: 210px; padding: 7px 10px; font-size: 0.85rem; border-radius: 6px; background: rgba(0,0,0,0.4); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                <option value="outlook365">Outlook institucional (Microsoft 365)</option>
+                <option value="outlookcom">Outlook.com / Hotmail</option>
+                <option value="gmail">Gmail</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div id="envio-contadores" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:15px;"></div>
+
+        <div class="control-row" style="margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="envio-buscar" placeholder="Buscar por vendedor, documento o correo...">
+          </div>
+          <select id="envio-filtro" style="max-width: 230px; padding: 7px 10px; font-size: 0.85rem; border-radius: 6px; background: rgba(0,0,0,0.4); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+            <option value="pendiente">Pendientes de enviar</option>
+            <option value="enviado">Enviados sin descarga</option>
+            <option value="descargado">Descargados</option>
+            <option value="sin_correo">Sin correo registrado</option>
+            <option value="todos">Todos</option>
+          </select>
+          <button id="envio-exportar" class="btn btn-secondary">Exportar lista (CSV)</button>
+          <button id="envio-actualizar" class="btn btn-secondary">Actualizar</button>
+        </div>
+
+        <div class="table-container card-glass">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Vendedor / Documento</th>
+                <th>Correo Electrónico</th>
+                <th>Estado</th>
+                <th>Enviado / Descargado</th>
+                <th width="260">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="envio-lista">
+              <tr><td colspan="5" class="text-center py-4">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- TAB: EMAILS LOGS -->
       <div id="view-emails" class="tab-view hidden">
         <div class="control-row" style="margin-bottom: 15px;">
@@ -696,5 +761,6 @@
   </div>
 
   <script src="/js/admin.js"></script>
+  <script src="/js/envio-manual.js"></script>
 </body>
 </html>

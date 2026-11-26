@@ -32,8 +32,9 @@ router.get('/logs', authenticateToken, async (req, res) => {
         b.uuid as beneficiary_uuid
       FROM email_logs el
       LEFT JOIN beneficiaries b ON el.beneficiary_id = b.id
+      WHERE el.status <> 'prepared'
       ORDER BY el.sent_at DESC
-      LIMIT 200
+      LIMIT 5000
     `);
 
     return res.json({
@@ -236,7 +237,7 @@ router.get('/track/:token', async (req, res) => {
 router.get('/certificate/:id/send', authenticateToken, async (req, res) => {
   try {
     const log = await dbGet('SELECT * FROM email_logs WHERE id = ?', [req.params.id]);
-    if (!log) {
+    if (!log || log.status === 'prepared' || log.status === 'failed') {
       return res.status(404).json({ success: false, message: 'Registro de envío no encontrado.' });
     }
 
@@ -297,7 +298,7 @@ router.get('/certificate/beneficiary/:beneficiaryId/send', authenticateToken, as
       return res.status(404).send('Beneficiario no encontrado.');
     }
 
-    const log = await dbGet('SELECT * FROM email_logs WHERE beneficiary_id = ? ORDER BY sent_at DESC LIMIT 1', [beneficiaryId]);
+    const log = await dbGet("SELECT * FROM email_logs WHERE beneficiary_id = ? AND status IN ('sent', 'opened') ORDER BY sent_at DESC LIMIT 1", [beneficiaryId]);
     if (!log) {
       return res.status(404).send(`No se registra ningún envío de correo previo para el vendedor ${beneficiary.full_name}. Debe enviarle el carné por correo primero.`);
     }
@@ -324,7 +325,7 @@ router.get('/certificate/beneficiary/:beneficiaryId/open', authenticateToken, as
       return res.status(404).send('Beneficiario no encontrado.');
     }
 
-    const log = await dbGet('SELECT * FROM email_logs WHERE beneficiary_id = ? ORDER BY sent_at DESC LIMIT 1', [beneficiaryId]);
+    const log = await dbGet("SELECT * FROM email_logs WHERE beneficiary_id = ? AND status IN ('sent', 'opened') ORDER BY sent_at DESC LIMIT 1", [beneficiaryId]);
     if (!log) {
       return res.status(404).send(`No se registra ningún envío de correo previo para el vendedor ${beneficiary.full_name}.`);
     }

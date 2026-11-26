@@ -74,6 +74,7 @@ app.use('/api/beneficiaries', require('./server/routes/beneficiaries'));
 app.use('/api/pdf', require('./server/routes/pdf'));
 app.use('/api/audit', require('./server/routes/audit'));
 app.use('/api/public', require('./server/routes/public'));
+app.use('/api/emails/manual', require('./server/routes/manualEmails'));
 app.use('/api/emails', require('./server/routes/emails'));
 
 // Fallback to index.html for undefined frontend routes (SPA client-side routing fallback)

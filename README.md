@@ -121,3 +121,20 @@ DATABASE_URL=... node scripts/sync_base.js base.xlsx --apply     # aplica en una
 ```
 
 En Railway la base solo tiene dirección interna: se ejecuta dentro del contenedor con `railway ssh --service QR` (el Excel no se sube al repositorio).
+
+## Envío manual de carnés desde el buzón institucional
+
+Cuando el buzón institucional no permite envío automático (SMTP/Graph), use la pestaña
+**Envío por Outlook** del panel:
+
+1. **Redactar** abre el correo web (Outlook institucional, Outlook.com o Gmail) con el
+   destinatario, el asunto y el texto listos, que incluye el enlace personal de descarga.
+2. El operador revisa y envía desde su correo.
+3. **Marcar enviado** registra la fecha y el operador (`email_logs.smtp_message_id = manual:<usuario>`)
+   y deja constancia en `audit_logs` (`EMAIL_MANUAL_SENT`).
+4. Cuando el vendedor abre su enlace, el estado pasa a **Descargado** y se habilita el
+   certificado de descarga.
+
+Los borradores sin confirmar quedan con estado `prepared` y no aparecen en el historial ni
+generan certificados. La lista filtrada (pendientes, enviados, descargados, sin correo) se
+puede exportar a CSV.
