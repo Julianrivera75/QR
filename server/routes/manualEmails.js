@@ -36,18 +36,20 @@ router.get('/overview', async (req, res) => {
     const rows = await dbAll(`
       SELECT b.id, b.full_name, b.document_type, b.document_number, b.email,
              el.id AS log_id, el.status AS log_status, el.sent_at, el.opened_at,
-             el.recipient_email, el.smtp_message_id
+             el.recipient_email, el.smtp_message_id, el.error_message
       FROM beneficiaries b
       LEFT JOIN email_logs el ON el.id = (
         SELECT MAX(e2.id) FROM email_logs e2
-        WHERE e2.beneficiary_id = b.id AND e2.status <> 'failed'
+        WHERE e2.beneficiary_id = b.id
       )
       ORDER BY b.full_name
     `);
 
     const data = rows.map((r) => {
       let estado;
-      if (r.log_status === 'opened' || r.opened_at) estado = 'descargado';
+      const mismoCorreo = r.recipient_email && String(r.email || '').trim() === r.recipient_email;
+      if (r.log_status === 'failed' && mismoCorreo) estado = 'rebotado';
+      else if (r.log_status === 'opened' || r.opened_at) estado = 'descargado';
       else if (r.log_status === 'sent') estado = 'enviado';
       else if (!isValidEmail(r.email)) estado = 'sin_correo';
       else if (r.log_status === 'prepared') estado = 'preparado';
@@ -61,6 +63,7 @@ router.get('/overview', async (req, res) => {
         estado,
         log_id: r.log_id,
         sent_at: r.log_status === 'prepared' ? null : r.sent_at,
+        error: r.log_status === 'failed' ? r.error_message : null,
         opened_at: r.opened_at,
         manual: String(r.smtp_message_id || '').startsWith('manual:')
       };
@@ -131,6 +134,25 @@ router.post('/mark-sent/:logId', async (req, res) => {
   } catch (error) {
     console.error('Error marcando envío manual:', error);
     return res.status(500).json({ success: false, message: 'Error al registrar el envío.' });
+  }
+});
+
+// POST /api/emails/manual/bounce/:logId - el correo rebotó (la cuenta no existe, buzón lleno...)
+router.post('/bounce/:logId', async (req, res) => {
+  try {
+    const log = await dbGet('SELECT * FROM email_logs WHERE id = ?', [req.params.logId]);
+    if (!log) return res.status(404).json({ success: false, message: 'Registro no encontrado.' });
+    if (!['sent', 'opened'].includes(log.status)) {
+      return res.status(400).json({ success: false, message: 'Solo se registra rebote de un correo enviado.' });
+    }
+    const motivo = String((req.body && req.body.motivo) || 'Rebote: el servidor de destino rechazó el correo').slice(0, 500);
+    // Un rebote anula cualquier "apertura": nadie recibió el mensaje
+    await dbRun("UPDATE email_logs SET status = 'failed', opened_at = NULL, error_message = ? WHERE id = ?", [motivo, log.id]);
+    await audit(req, log.beneficiary_id, 'EMAIL_BOUNCE', { correo: log.recipient_email, registro: log.id, motivo });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Error registrando rebote:', error);
+    return res.status(500).json({ success: false, message: 'Error al registrar el rebote.' });
   }
 });
 

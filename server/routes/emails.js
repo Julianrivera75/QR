@@ -167,45 +167,72 @@ router.post('/send-bulk', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/emails/confirm/:token - Public confirmation & PDF delivery link
+// Enlace personal de descarga. El GET solo muestra una página con un botón: los
+// filtros de seguridad del correo (Safe Links, antivirus) abren los enlaces de forma
+// automática y no deben contar como recepción. La descarga real es el POST del botón.
+async function findValidConfirmLog(token) {
+  const log = await dbGet('SELECT * FROM email_logs WHERE tracking_token = ?', [token]);
+  if (!log || log.status === 'failed') return { error: 404 };
+  // Links expire after CONFIRM_LINK_TTL_DAYS (default 30); admins can resend the card
+  const ttlDays = parseInt(process.env.CONFIRM_LINK_TTL_DAYS, 10) || 30;
+  const sentAt = new Date(log.sent_at);
+  if (!isNaN(sentAt) && Date.now() - sentAt.getTime() > ttlDays * 24 * 60 * 60 * 1000) return { error: 410 };
+  return { log };
+}
+
+const confirmPage = (inner) => `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="robots" content="noindex">
+<title>Carné de identificación - San Victorino</title>
+<style>body{font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;margin:0;padding:24px 16px;color:#1e293b}
+.box{max-width:480px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden}
+.top{background:#162b63;color:#fff;padding:22px;text-align:center;border-bottom:4px solid #f2bd2b}
+.top h1{margin:0;font-size:18px}.top p{margin:6px 0 0;color:#f2bd2b;font-size:13px}
+.in{padding:24px;text-align:center;font-size:15px;line-height:1.5}
+button{background:#162b63;color:#fff;border:2px solid #f2bd2b;border-radius:8px;padding:14px 26px;font-size:16px;font-weight:700;cursor:pointer}
+small{display:block;margin-top:18px;color:#64748b;font-size:12px}</style></head>
+<body><div class="box"><div class="top"><h1>Carné de identificación</h1><p>Fallo Sentencia A.P. 314-2023 | San Victorino</p></div>
+<div class="in">${inner}</div></div></body></html>`;
+
+const EXPIRED = 'Este enlace ha expirado. Solicite un nuevo envío del carné a la Alcaldía Local de Santa Fe.';
+
+// GET /api/emails/confirm/:token - página con el botón de descarga (no registra nada)
 router.get('/confirm/:token', async (req, res) => {
-  const { token } = req.params;
-
   try {
-    const log = await dbGet('SELECT * FROM email_logs WHERE tracking_token = ?', [token]);
-    if (!log) {
-      return res.status(404).send('Enlace de confirmación no válido o expirado.');
-    }
+    const { error } = await findValidConfirmLog(req.params.token);
+    res.setHeader('Cache-Control', 'no-store');
+    if (error === 410) return res.status(410).send(confirmPage(EXPIRED));
+    if (error) return res.status(404).send(confirmPage('Enlace no válido. Verifique el enlace recibido en su correo.'));
+    const token = encodeURIComponent(req.params.token);
+    return res.send(confirmPage(`<p>Su carné de identificación está listo.</p>
+<form method="POST" action="/api/emails/confirm/${token}"><button type="submit">Descargar mi carné</button></form>
+<small>Al descargarlo queda registrada la recepción de su carné.</small>`));
+  } catch (error) {
+    console.error('Error showing confirm page:', error);
+    return res.status(500).send('Error al procesar el enlace del carné.');
+  }
+});
 
-    // Links expire after CONFIRM_LINK_TTL_DAYS (default 30); admins can resend the card
-    const ttlDays = parseInt(process.env.CONFIRM_LINK_TTL_DAYS, 10) || 30;
-    const sentAt = new Date(log.sent_at);
-    if (!isNaN(sentAt) && Date.now() - sentAt.getTime() > ttlDays * 24 * 60 * 60 * 1000) {
-      return res.status(410).send('Este enlace ha expirado. Solicite un nuevo envío del carné a la Alcaldía Local.');
-    }
+// POST /api/emails/confirm/:token - descarga real: registra la recepción y entrega el PDF
+router.post('/confirm/:token', async (req, res) => {
+  try {
+    const { log, error } = await findValidConfirmLog(req.params.token);
+    if (error === 410) return res.status(410).send(confirmPage(EXPIRED));
+    if (error) return res.status(404).send(confirmPage('Enlace no válido.'));
 
-    // Update status to 'opened' with current timestamp
     await dbRun(`
-      UPDATE email_logs 
-      SET status = 'opened', opened_at = CURRENT_TIMESTAMP 
-      WHERE id = ? AND (opened_at IS NULL OR status = 'sent')
+      UPDATE email_logs
+      SET status = 'opened', opened_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND opened_at IS NULL
     `, [log.id]);
 
-    // Retrieve beneficiary to generate and deliver the carnet PDF
     const beneficiary = await dbGet('SELECT * FROM beneficiaries WHERE id = ?', [log.beneficiary_id]);
-    if (!beneficiary) {
-      return res.status(404).send('Beneficiario no encontrado.');
-    }
+    if (!beneficiary) return res.status(404).send(confirmPage('Vendedor no encontrado.'));
 
     const host = publicHost(req);
     const pdfBytes = await generateCardPdf(beneficiary, host);
-
-
-
     res.contentType('application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=carnet-${beneficiary.document_number}.pdf`);
     return res.send(Buffer.from(pdfBytes));
-
   } catch (error) {
     console.error('Error confirming email read:', error);
     return res.status(500).send('Error al procesar la confirmación del carné.');

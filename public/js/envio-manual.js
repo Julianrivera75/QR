@@ -10,6 +10,7 @@
     preparado: { txt: 'Redactado, sin confirmar', cls: 'badge-warning' },
     enviado: { txt: 'Enviado', cls: 'badge-success' },
     descargado: { txt: 'Descargado', cls: 'badge-success' },
+    rebotado: { txt: 'Rebotado', cls: 'badge-danger' },
     sin_correo: { txt: 'Sin correo', cls: 'badge-danger' }
   };
 
@@ -48,6 +49,7 @@
       ['Pendientes', n('pendiente')],
       ['Enviados sin descarga', n('enviado')],
       ['Descargados', n('descargado')],
+      ['Rebotados', n('rebotado')],
       ['Sin correo', n('sin_correo')]
     ];
     $('envio-contadores').innerHTML = tarjetas.map(([l, v]) => `
@@ -65,7 +67,9 @@
       case 'preparado':
         return b('btn-secondary envio-redactar', '✉️ Redactar de nuevo') + ' ' + b('btn-success envio-marcar', '✓ Marcar enviado');
       case 'enviado':
-        return b('btn-secondary envio-cert-envio', '📜 Cert. envío') + ' ' + (f.manual ? b('btn-secondary envio-deshacer', 'Deshacer') : '');
+        return b('btn-secondary envio-cert-envio', '📜 Cert. envío') + ' ' + b('btn-secondary envio-rebote', 'Marcar rebote') + ' ' + (f.manual ? b('btn-secondary envio-deshacer', 'Deshacer') : '');
+      case 'rebotado':
+        return `<span class="text-muted" style="font-size:0.78rem;">${esc(f.error || 'Rebotado')}</span>`;
       case 'descargado':
         return b('btn-secondary envio-cert-envio', '📜 Cert. envío') + ' ' + b('btn-success envio-cert-lectura', '📖 Cert. descarga');
       default:
@@ -83,7 +87,7 @@
     }
     tbody.innerHTML = lista.map((f) => {
       const e = ESTADOS[f.estado] || ESTADOS.pendiente;
-      const fechas = [f.sent_at ? `Enviado: ${fmt(f.sent_at)}` : '', f.opened_at ? `Descargado: ${fmt(f.opened_at)}` : ''].filter(Boolean).join('<br>');
+      const fechas = [f.sent_at ? `${f.estado === 'rebotado' ? 'Intento' : 'Enviado'}: ${fmt(f.sent_at)}` : '', f.opened_at ? `Descargado: ${fmt(f.opened_at)}` : ''].filter(Boolean).join('<br>');
       return `<tr>
         <td><div style="font-weight:600;">${esc(f.full_name)}</div>
             <div style="font-size:0.75rem; color: var(--color-text-muted);">${esc(f.document_type || 'CC')} ${esc(f.document_number)}</div></td>
@@ -139,6 +143,19 @@
       .catch((err) => alert(err.message || 'Error al registrar.'));
   }
 
+  function rebote(logId) {
+    const motivo = prompt('Motivo del rebote:', 'La cuenta de correo no existe');
+    if (motivo === null) return;
+    fetch(`/api/emails/manual/bounce/${logId}`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motivo: `Rebote: ${motivo}` })
+    })
+      .then((r) => r.json())
+      .then((d) => { if (!d.success) throw new Error(d.message); return cargar(); })
+      .catch((err) => alert(err.message || 'Error al registrar el rebote.'));
+  }
+
   function exportar() {
     const lista = visibles();
     const celda = (v) => {
@@ -180,6 +197,7 @@
       if (btn.classList.contains('envio-redactar')) redactar(id);
       else if (btn.classList.contains('envio-marcar')) marcar(log, false);
       else if (btn.classList.contains('envio-deshacer')) marcar(log, true);
+      else if (btn.classList.contains('envio-rebote')) rebote(log);
       else if (btn.classList.contains('envio-cert-envio')) window.open(`/api/emails/certificate/${log}/send`, '_blank');
       else if (btn.classList.contains('envio-cert-lectura')) window.open(`/api/emails/certificate/${log}/open`, '_blank');
     });
