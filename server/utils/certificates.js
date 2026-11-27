@@ -1,3 +1,4 @@
+const { safeFont } = require('./winansi');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const qr = require('qrcode');
 const path = require('path');
@@ -32,8 +33,8 @@ async function generateSendCertificatePdf(emailLog, beneficiary, host) {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([width, height]);
 
-  const fontHelvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontHelveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontHelvetica = safeFont(await pdfDoc.embedFont(StandardFonts.Helvetica));
+  const fontHelveticaBold = safeFont(await pdfDoc.embedFont(StandardFonts.HelveticaBold));
 
   const colorNavy = rgb(22 / 255, 43 / 255, 99 / 255);
   const colorGold = rgb(200 / 255, 155 / 255, 30 / 255);
@@ -272,8 +273,8 @@ async function generateOpenCertificatePdf(emailLog, beneficiary, host) {
   const pdfDoc = await PDFDocument.create();
   const page = pdfDoc.addPage([width, height]);
 
-  const fontHelvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontHelveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontHelvetica = safeFont(await pdfDoc.embedFont(StandardFonts.Helvetica));
+  const fontHelveticaBold = safeFont(await pdfDoc.embedFont(StandardFonts.HelveticaBold));
 
   const colorNavy = rgb(22 / 255, 43 / 255, 99 / 255);
   const colorGold = rgb(200 / 255, 155 / 255, 30 / 255);

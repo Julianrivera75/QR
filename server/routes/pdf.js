@@ -5,6 +5,7 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const qr = require('qrcode');
+const { safeFont } = require('../utils/winansi');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const JSZip = require('jszip');
 const { dbGet, dbAll } = require('../db');
@@ -89,8 +90,8 @@ async function generateCardPdf(beneficiary, host) {
   const page = pdfDoc.addPage([width, height]);
   
   // Standard fonts
-  const fontHelvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontHelveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontHelvetica = safeFont(await pdfDoc.embedFont(StandardFonts.Helvetica));
+  const fontHelveticaBold = safeFont(await pdfDoc.embedFont(StandardFonts.HelveticaBold));
 
   // Paleta de Colores Oficiales
   const colorDarkBlue = rgb(26 / 255, 54 / 255, 120 / 255);    // #1a3678 (Fondo principal)
